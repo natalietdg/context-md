@@ -1,0 +1,71 @@
+{
+    "language": "zh",
+    "clips": [
+    {
+      "seq": 1,
+      "file": "zh-dr-1.mp3",
+      "speaker": "Doctor",
+      "text": "早上好，您今天感觉怎么样？"
+    },
+    {
+      "seq": 2,
+      "file": "zh-pt-1.mp3",
+      "speaker": "Patient",
+      "text": "我胸口疼痛已经两天了。"
+    },
+    {
+      "seq": 3,
+      "file": "zh-dr-2.mp3",
+      "speaker": "Doctor",
+      "text": "您能描述一下疼痛吗？是刺痛还是钝痛？"
+    },
+    {
+      "seq": 4,
+      "file": "zh-pt-2.mp3",
+      "speaker": "Patient",
+      "text": "是刺痛，时有时无，特别是深呼吸的时候。"
+    },
+    {
+      "seq": 5,
+      "file": "zh-dr-3.mp3",
+      "speaker": "Doctor",
+      "text": "您有没有感到呼吸困难或头晕？"
+    },
+    {
+      "seq": 6,
+      "file": "zh-pt-3.mp3",
+      "speaker": "Patient",
+      "text": "是的，我感到有点呼吸困难，特别是爬楼梯的时候。"
+    },
+    {
+      "seq": 7,
+      "file": "zh-dr-4.mp3",
+      "speaker": "Doctor",
+      "text": "我建议做心电图和胸部X光检查，排除心脏问题。"
+    },
+    {
+      "seq": 8,
+      "file": "zh-pt-4.mp3",
+      "speaker": "Patient",
+      "text": "好的，听起来不错。我需要担心吗？"
+    },
+    {
+      "seq": 9,
+      "file": "zh-dr-5.mp3",
+      "speaker": "Doctor",
+      "text": "让我们先做检查，但现在请避免剧烈运动。您目前在服用什么药物吗？有肾脏问题吗？"
+    },
+    {
+      "seq": 10,
+      "file": "zh-pt-5.mp3",
+      "speaker": "Patient",
+      "text": "只有降血压药，我的肾脏功能有点弱。"
+    },
+    {
+      "seq": 11,
+      "file": "zh-dr-6.mp3",
+      "speaker": "Doctor",
+      "text": "我会开扑热息痛1000毫克，每6小时服用一次止痛。与您的药物一起服用是安全的。"
+    }
+  ]
+}

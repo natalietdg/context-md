@@ -1,0 +1,13 @@
+[build]
+  command = "npm run build"
+  publish = "build"
+
+[build.environment]
+  CI = "false"
+  # Optionally, you can disable CRA's ESLint plugin entirely during Netlify builds:
+  # DISABLE_ESLINT_PLUGIN = "true"
+  
+  # Netlify Secrets Scanning: allow public Supabase client keys in frontend bundle
+  # The Supabase anon key and URL are intended to be public on the client.
+  # See: https://supabase.com/docs/guides/platform/security#api-keys
+  SECRETS_SCAN_OMIT_KEYS = "REACT_APP_SUPABASE_ANON_KEY,REACT_APP_SUPABASE_ENDPOINT_URL"

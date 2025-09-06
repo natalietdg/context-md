@@ -1,0 +1,17 @@
+{
+  "watch": [
+    "backend/supabase/functions",
+    "backend/api/src",
+    "frontend"
+  ],
+  "ext": "ts,js,json,tsx,jsx,css,md",
+  "ignore": [
+    "**/node_modules/**",
+    ".git",
+    "**/.next/**",
+    "**/dist/**",
+    "**/build/**"
+  ],
+  "exec": "npm run dev",
+  "delay": "300"
+}

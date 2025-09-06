@@ -1,0 +1,25 @@
+{
+    "compilerOptions": {
+      "target": "es2016", // Or a later version like es2020 or esnext
+      "module": "esnext", // Or commonjs if you are using Node.js directly
+      "moduleResolution": "node", // Essential for omitting extensions
+      "allowSyntheticDefaultImports": true, // Recommended for React projects
+      "jsx": "react", // Or "react-jsx" for newer React versions
+      "esModuleInterop": true, // Recommended for better module interoperability
+      "forceConsistentCasingInFileNames": true,
+      "strict": true,
+      "skipLibCheck": true,
+      "resolveJsonModule": true, // If you import JSON files
+      "isolatedModules": true, // If using a bundler like Webpack/Rollup
+      "noEmit": true // If your bundler handles transpilation
+    },
+    "include": [
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      "src/**/*.d.ts"
+    ],
+    "exclude": [
+      "node_modules",
+      "build"
+    ]
+  }

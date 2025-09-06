@@ -1,0 +1,71 @@
+{
+  "language": "ms",
+  "clips": [
+    {
+      "seq": 1,
+      "file": "ms-dr-1.mp3",
+      "speaker": "Doctor",
+      "text": "Selamat pagi, bagaimana perasaan anda hari ini?"
+    },
+    {
+      "seq": 2,
+      "file": "ms-pt-1.mp3",
+      "speaker": "Pesakit",
+      "text": "Saya mengalami sakit dada selama dua hari ini."
+    },
+    {
+      "seq": 3,
+      "file": "ms-dr-2.mp3",
+      "speaker": "Doctor",
+      "text": "Boleh anda terangkan rasa sakitnya? Adakah ia tajam atau tumpul?"
+    },
+    {
+      "seq": 4,
+      "file": "ms-pt-2.mp3",
+      "speaker": "Pesakit",
+      "text": "Ia adalah sakit yang tajam dan datang-pergi, terutama bila saya bernafas dalam."
+    },
+    {
+      "seq": 5,
+      "file": "ms-dr-3.mp3",
+      "speaker": "Doctor",
+      "text": "Adakah anda mengalami sesak nafas atau pening?"
+    },
+    {
+      "seq": 6,
+      "file": "ms-pt-3.mp3",
+      "speaker": "Pesakit",
+      "text": "Ya, saya rasa sedikit sesak nafas, terutama bila naik tangga."
+    },
+    {
+      "seq": 7,
+      "file": "ms-dr-4.mp3",
+      "speaker": "Doctor",
+      "text": "Saya cadangkan kita buat ECG dan X-ray dada untuk mengesan sebarang masalah jantung."
+    },
+    {
+      "seq": 8,
+      "file": "ms-pt-4.mp3",
+      "speaker": "Pesakit",
+      "text": "Baiklah, itu bagus. Adakah saya perlu bimbang?"
+    },
+    {
+      "seq": 9,
+      "file": "ms-dr-5.mp3",
+      "speaker": "Doctor",
+      "text": "Mari kita buat ujian dahulu, tetapi elakkan aktiviti berat buat masa ini. Adakah anda mengambil ubat-ubatan atau mempunyai masalah buah pinggang?"
+    },
+    {
+      "seq": 10,
+      "file": "ms-pt-5.mp3",
+      "speaker": "Pesakit",
+      "text": "Hanya ubat darah tinggi, dan buah pinggang saya agak lemah."
+    },
+    {
+      "seq": 11,
+      "file": "ms-dr-6.mp3",
+      "speaker": "Doctor",
+      "text": "Saya akan preskrib paracetamol 1000mg setiap 6 jam untuk sakit. Selamat dengan ubat anda."
+    }
+  ]
+}
