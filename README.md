@@ -15,6 +15,14 @@ context-md/
 │   ├── transcriber.py     # Core transcription logic
 │   ├── transcript_output/ # Generated transcripts
 │   └── README.md          # AWS documentation
+├── whisperX/              # 🎤 WhisperX transcription & diarization
+│   ├── main.py            # Main pipeline script
+│   ├── audio_processor.py # Audio preprocessing (mono 16kHz)
+│   ├── whisperx_transcriber.py # WhisperX implementation
+│   ├── s3_downloader.py   # S3 audio downloader
+│   ├── setup.sh           # Installation script
+│   ├── README.md          # WhisperX documentation
+│   └── transcript_output/ # WhisperX output files
 └── sealion/               # SEA-LION utilities  
     ├── translator.py      # Core translation logic
     └── README.md          # Translation documentation
@@ -78,6 +86,14 @@ python translate.py
 - **Smart processing**: Preserves speaker labels and formatting
 - **Rate limiting**: Automatic 10 RPM compliance
 - **Batch processing**: Handles multiple files automatically
+
+### 🎤 **WhisperX (Advanced Transcription)**
+- **Multi-language support**: English, Malay, Chinese with auto-detection
+- **Speaker diarization**: Advanced speaker identification and separation
+- **Audio preprocessing**: Automatic conversion to mono 16kHz WAV
+- **Word-level timestamps**: Precise timing for each word
+- **S3 integration**: Direct processing from S3 buckets
+- **GPU acceleration**: CUDA support for faster processing
 
 ### 🛠️ **Developer Experience**
 - **Modular design**: Separate AWS and SEA-LION concerns
