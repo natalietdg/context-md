@@ -1,0 +1,36 @@
+Collecting torch
+  Downloading torch-2.8.0-cp39-none-macosx_11_0_arm64.whl.metadata (30 kB)
+Collecting torchaudio
+  Downloading torchaudio-2.8.0-cp39-cp39-macosx_11_0_arm64.whl.metadata (7.2 kB)
+Collecting filelock (from torch)
+  Downloading filelock-3.19.1-py3-none-any.whl.metadata (2.1 kB)
+Requirement already satisfied: typing-extensions>=4.10.0 in /Users/estherlow/Desktop/context-md/venv/lib/python3.9/site-packages (from torch) (4.15.0)
+Collecting sympy>=1.13.3 (from torch)
+  Downloading sympy-1.14.0-py3-none-any.whl.metadata (12 kB)
+Collecting networkx (from torch)
+  Downloading networkx-3.2.1-py3-none-any.whl.metadata (5.2 kB)
+Collecting jinja2 (from torch)
+  Downloading jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)
+Collecting fsspec (from torch)
+  Downloading fsspec-2025.9.0-py3-none-any.whl.metadata (10 kB)
+Collecting mpmath<1.4,>=1.1.0 (from sympy>=1.13.3->torch)
+  Downloading mpmath-1.3.0-py3-none-any.whl.metadata (8.6 kB)
+Collecting MarkupSafe>=2.0 (from jinja2->torch)
+  Downloading MarkupSafe-3.0.2-cp39-cp39-macosx_11_0_arm64.whl.metadata (4.0 kB)
+Downloading torch-2.8.0-cp39-none-macosx_11_0_arm64.whl (73.6 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 73.6/73.6 MB 2.4 MB/s  0:00:30
+Downloading torchaudio-2.8.0-cp39-cp39-macosx_11_0_arm64.whl (1.9 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.9/1.9 MB 2.7 MB/s  0:00:00
+Downloading sympy-1.14.0-py3-none-any.whl (6.3 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.3/6.3 MB 2.9 MB/s  0:00:02
+Downloading mpmath-1.3.0-py3-none-any.whl (536 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 536.2/536.2 kB 2.6 MB/s  0:00:00
+Downloading filelock-3.19.1-py3-none-any.whl (15 kB)
+Downloading fsspec-2025.9.0-py3-none-any.whl (199 kB)
+Downloading jinja2-3.1.6-py3-none-any.whl (134 kB)
+Downloading MarkupSafe-3.0.2-cp39-cp39-macosx_11_0_arm64.whl (12 kB)
+Downloading networkx-3.2.1-py3-none-any.whl (1.6 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.6/1.6 MB 2.5 MB/s  0:00:00
+Installing collected packages: mpmath, sympy, networkx, MarkupSafe, fsspec, filelock, jinja2, torch, torchaudio
+
+Successfully installed MarkupSafe-3.0.2 filelock-3.19.1 fsspec-2025.9.0 jinja2-3.1.6 mpmath-1.3.0 networkx-3.2.1 sympy-1.14.0 torch-2.8.0 torchaudio-2.8.0
