@@ -10,7 +10,8 @@ import { Stethoscope, HelpCircle, X, BriefcaseMedicalIcon } from 'lucide-react';
 import { History } from './components/History';
 import { sampleConsultations } from './script-wav/consultations/consultations';
 import axios from 'axios';
-const publicAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:4000';
+const API_KEY = process.env.REACT_APP_API_KEY;
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState(1);
@@ -87,16 +88,20 @@ export default function App() {
         .map((line: any) => `${line.speaker}: ${line.text}`)
         .join('\n');
 
-      const response = await axios.post(`${process.env.REACT_APP_SUPABASE_ENDPOINT_URL}/functions/v1/sealion-analysis`, {
-        transcript: transcriptString,
-        language: language,
-        outputLanguage: language // Keep same language for now
-      }, {
-        headers: {
-          'Authorization': `Bearer ${publicAnonKey}`,
-          'Content-Type': 'application/json',
+      const response = await axios.post(
+        `${API_BASE_URL}/analyze/structured`,
+        {
+          transcript: transcriptString,
+          language: language,
+          outputLanguage: language, // Keep same language for now
         },
-      });
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(API_KEY ? { 'x-api-key': API_KEY } : {}),
+          },
+        }
+      );
 
       if (response.status > 300) {
         const errorData = await response.data?.error;

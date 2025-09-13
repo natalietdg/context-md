@@ -4,6 +4,7 @@
   "description": "ContextMD Medical Assistant Application",
   "main": "App.tsx",
   "scripts": {
+    "dev": "react-scripts start",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
