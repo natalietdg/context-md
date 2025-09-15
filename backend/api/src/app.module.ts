@@ -19,8 +19,6 @@ import * as entities from './entities';
 // Legacy controllers and services
 import { AnalyzeController } from './controllers/analyze.controller';
 import { AnalyzeService } from './services/analyze.service';
-import { DatabaseService } from './database/database.service';
-import { DatabaseController } from './controllers/database.controller';
 import { RateLimitMiddleware } from './middleware/rate-limit.middleware';
 import { SecurityMiddleware } from './middleware/security.middleware';
 import { DatabaseModule } from './database/database.module';
@@ -37,26 +35,6 @@ import { DatabaseModule } from './database/database.module';
       dest: './uploads',
       limits: { fileSize: 100 * 1024 * 1024 },
     }),
-    TypeOrmModule.forRootAsync({
-      imports: [DatabaseModule],
-      inject: [DatabaseService],
-      useFactory: async (dbService: DatabaseService) => ({
-        type: 'postgres',
-        ...(await dbService.getDatabaseConfig()),
-        entities: [
-          entities.User,
-          entities.Doctor,
-          entities.Patient,
-          entities.Consent,
-          entities.ConsentReplayLog,
-          entities.Consultation,
-          entities.Report,
-          entities.Appointment,
-          entities.AuditLog,
-        ],
-        synchronize: false,
-      }),
-    }),
     UserModule,
     AuthModule,
     ConsentModule,
@@ -65,8 +43,8 @@ import { DatabaseModule } from './database/database.module';
     HistoryModule,
     DashboardModule,
   ],
-  controllers: [AnalyzeController, DatabaseController],
-  providers: [AnalyzeService], // 👈 remove DatabaseService here
+  controllers: [AnalyzeController],
+  providers: [AnalyzeService],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
