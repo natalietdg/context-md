@@ -143,10 +143,11 @@ Environment Variables:
         
         # Save results
         print("💾 Saving results...")
-        output_file = transcriber.save_results(result, filename)
+        raw_output_file, lean_output_file = transcriber.save_results(result, filename)
         
         print(f"\n🎉 Transcription completed successfully!")
-        print(f"📄 Results saved to: {output_file}")
+        print(f"📄 Raw results: {raw_output_file}")
+        print(f"📄 Clean results: {lean_output_file}")
         
         # Print summary if verbose
         if args.verbose and result:

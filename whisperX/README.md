@@ -8,6 +8,10 @@ A complete pipeline for transcribing and diarizing audio files using WhisperX. T
 - **Word-level timestamps**: Precise timing information for each word
 - **Multiple output formats**: JSON, plain text, and speaker-separated transcripts
 
+## Output Results 
+- transcript_output -> contains raw json transcription with scores for each word 
+- transcript_output_lean -> contains extracted text, speaker, language of the conversation
+
 ## Features
 
 - 🎵 **S3 Integration**: Download audio files directly from S3 buckets
