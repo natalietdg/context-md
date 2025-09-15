@@ -1,15 +1,29 @@
 version: 0.2
 
+env:
+  variables:
+    NODE_OPTIONS: "--max-old-space-size=1024"
+    NPM_CONFIG_MAXSOCKETS: "1"
+    NPM_CONFIG_PROGRESS: "false"
+    NPM_CONFIG_FUND: "false"
+    NPM_CONFIG_AUDIT: "false"
+
 phases:
   install:
     runtime-versions:
       nodejs: 18
     commands:
-      - echo "Installing dependencies..."
+      - echo "Installing dependencies with memory optimization..."
       - npm --version
       - node --version
-      - npm ci || exit 1
-      - npm run install:all || exit 1
+      - echo "Installing backend dependencies first..."
+      - cd backend/api
+      - npm ci --no-optional --no-fund --no-audit --prefer-offline || exit 1
+      - cd ../..
+      - echo "Installing frontend dependencies..."
+      - cd frontend  
+      - npm ci --no-optional --no-fund --no-audit --prefer-offline || exit 1
+      - cd ..
   
   pre_build:
     commands:
