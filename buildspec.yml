@@ -6,15 +6,17 @@ phases:
       nodejs: 20
     commands:
       - echo "Installing dependencies"
+      - pwd
       - ls -la
-      - cd backend/api && npm install
+      - find . -name "backend" -type d
+      - find . -name "*.json" | head -10
+      - npm --prefix backend/api install
       
   build:
     commands:
       - echo "Building backend"
-      - cd backend/api
-      - npx tsc -p tsconfig.json
-      - ls -la dist/
+      - npm --prefix backend/api run build
+      - ls -la backend/api/dist/
 
 artifacts:
   files:
