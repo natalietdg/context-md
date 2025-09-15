@@ -26,7 +26,7 @@ export class AnalyzeService {
       throw new BadRequestException('Missing required fields');
     }
 
-    const apiKey = process.env.SEA_LION_API_KEY;
+    const apiKey = process.env.SEALION_API_KEY;
     if (!apiKey) {
       throw new ServiceUnavailableException('Service configuration error');
     }
@@ -123,7 +123,7 @@ export class AnalyzeService {
       throw new BadRequestException('Missing required fields');
     }
 
-    const apiKey = process.env.SEA_LION_API_KEY;
+    const apiKey = process.env.SEALION_API_KEY;
     if (!apiKey) {
       throw new ServiceUnavailableException('Service configuration error');
     }

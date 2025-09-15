@@ -1,6 +1,7 @@
 import React from 'react';
 
-import { cn } from "./utils";
+// Simple utility function for className merging
+const cn = (...classes: (string | undefined)[]) => classes.filter(Boolean).join(' ');
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (

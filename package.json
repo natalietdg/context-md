@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
+    "install:all": "npm install && npm install --prefix frontend && npm install --prefix backend/api",
     "dev": "concurrently -n FRONTEND,API -c cyan,magenta \"npm run dev --prefix frontend || npm run _no-frontend\" \"npm run start:dev --prefix backend/api\"",
     "dev:api": "npm run start:dev --prefix backend/api",
     "dev:watch": "nodemon --config nodemon.json",

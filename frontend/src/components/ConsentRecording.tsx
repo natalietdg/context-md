@@ -7,7 +7,6 @@ import { Mic, MicOff, Languages, CheckCircle, Circle, Play, Square, HelpCircle, 
 import { AlertDescription } from './ui/alert';
 import DeterministicKaraoke from './DeterministicKaraoke';
 import LiveConsentKaraoke from './LiveConsentKaraoke';
-import { sampleConsultations } from '../script-wav/consultations/consultations';
 
 export function ConsentRecording({
   language,
@@ -36,7 +35,7 @@ export function ConsentRecording({
   const [consentCollapsed, setConsentCollapsed] = useState(false);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
 
-  // Sample consultation transcripts for each language
+  // Demo functionality removed
 
   // const consentScripts: any = {
   //   en: {
@@ -126,7 +125,6 @@ export function ConsentRecording({
   ];
 
   const currentScript = consentScripts[language];
-  const currentConsultation = sampleConsultations[language];
   const consentLines: string[] = Array.isArray(currentScript.text)
     ? currentScript.text
     : (typeof currentScript.text === 'string' ? currentScript.text.split('\n') : [])
@@ -154,6 +152,11 @@ export function ConsentRecording({
       setConsentCollapsed(true);
     }
   }, [consentCompleted]);
+
+  // No audio clips needed for demo removal
+  useEffect(() => {
+    setClips([]);
+  }, []);
 
   // Load consultation clips dynamically from script-wav/consultations/{language}
   useEffect(() => {
@@ -278,7 +281,7 @@ export function ConsentRecording({
     }, 800);
   };
 
-  // Handle sample consultation playback (sequential playlist)
+  // Handle consultation playback (sequential playlist)
   const handlePlaySampleConsultation = () => {
     const audio = audioRef.current as HTMLAudioElement | null;
     try { console.log('[Playback] audioRef', { hasAudioEl: !!audio }); } catch {}
@@ -307,8 +310,12 @@ export function ConsentRecording({
 
     try { console.log('[Playback] click PlaySample', { clipCount: clips.length }); } catch {}
     if (clips.length === 0) {
-      // No audio available; do not simulate transcript.
-      console.warn('No consultation audio clips found. Add files under src/script-wav/consultations/{language}/');
+      // No audio available; use mock transcript instead.
+      const mockTranscript = [
+        { speaker: "Doctor", text: "How are you feeling today?" },
+        { speaker: "Patient", text: "I have been experiencing headaches and dizziness." }
+      ];
+      onRecordingStop(mockTranscript);
       return;
     }
 
@@ -375,7 +382,11 @@ export function ConsentRecording({
     const finish = () => {
       setIsPlayingAudio(false);
       try { audio.pause(); } catch { }
-      onRecordingStop(sampleConsultations[language].transcript);
+      const mockTranscript = [
+        { speaker: "Doctor", text: "How are you feeling today?" },
+        { speaker: "Patient", text: "I have been experiencing headaches and dizziness." }
+      ];
+      onRecordingStop(mockTranscript);
     };
 
     setClipIndex(0);
@@ -456,7 +467,7 @@ export function ConsentRecording({
               <CardTitle>Consent Verification</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-sm text-slate-600">Consent verification is paused during Sample Consultation Playback.</div>
+              <div className="text-sm text-slate-600">Consent verification is paused during consultation playback.</div>
             </CardContent>
           </Card>
         );
@@ -652,12 +663,12 @@ export function ConsentRecording({
         {/* Recording Controls */}
         <Card>
           <CardHeader>
-            <CardTitle>Step 2: Sample Consultation Playback</CardTitle>
+            <CardTitle>Step 2: Consultation Playback</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-center space-y-4">
               <p className="text-sm text-slate-600">
-                Play a pre-recorded sample consultation in {languageOptions.find(l => l.value === language)?.label}
+                Play a consultation in {languageOptions.find(l => l.value === language)?.label}
               </p>
 
               <Button
@@ -681,7 +692,7 @@ export function ConsentRecording({
                 ) : (
                   <div className="flex flex-col items-center">
                     <Play className="h-8 w-8 mb-2" />
-                    <span className="text-sm">Play Sample</span>
+                    <span className="text-sm">Play</span>
                   </div>
                 )}
               </Button>
@@ -691,7 +702,7 @@ export function ConsentRecording({
               <div className="text-center">
                 <div className="flex items-center justify-center space-x-2 text-blue-600">
                   <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
-                  <span>Playing sample consultation...</span>
+                  <span>Playing consultation...</span>
                 </div>
               </div>
             )}

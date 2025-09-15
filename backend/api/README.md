@@ -24,7 +24,7 @@ Both expect the JSON body:
 ## Environment
 Copy `.env.example` to `.env` and set values:
 - `PORT` — default 4000
-- `SEA_LION_API_KEY` — API key for Sea Lion
+- `SEALION_API_KEY` — API key for Sea Lion
 - `ENVIRONMENT` — `development` to include raw LLM data in responses
 - `ALLOWED_API_KEYS` — comma-separated list
 - `API_KEY_REQUIRED` — `true` to enforce API key check

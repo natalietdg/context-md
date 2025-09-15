@@ -1,4 +1,4 @@
-import { Injectable, NestMiddleware, TooManyRequestsException } from '@nestjs/common';
+import { Injectable, NestMiddleware, HttpException, HttpStatus } from '@nestjs/common';
 import type { Request, Response, NextFunction } from 'express';
 
 const MAX_REQUESTS_PER_MINUTE = 20;
@@ -17,7 +17,7 @@ export class RateLimitMiddleware implements NestMiddleware {
 
     const recent = (requestLog.get(clientIP) || []).filter((t) => t > oneMinuteAgo);
     if (recent.length >= MAX_REQUESTS_PER_MINUTE) {
-      throw new TooManyRequestsException('Too many requests');
+      throw new HttpException('Too many requests', HttpStatus.TOO_MANY_REQUESTS);
     }
 
     recent.push(now);

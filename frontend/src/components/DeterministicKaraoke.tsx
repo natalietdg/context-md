@@ -1,7 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import enWav from "../script-wav/en.wav";
-import msWav from "../script-wav/ms.wav";
-import zhWav from "../script-wav/zh.mp3";
+// Audio imports removed for demo cleanup
 
 export type DeterministicKaraokeProps = {
   title?: string;
@@ -46,12 +44,8 @@ export default function DeterministicKaraoke({
   const [isPlaying, setIsPlaying] = useState(false);
 
   const audioSrc = useMemo(() => {
-    switch (language) {
-      case "ms": return msWav;
-      case "zh": return zhWav;
-      case "en":
-      default: return enWav;
-    }
+    // Audio sources removed for demo cleanup
+    return null;
   }, [language]);
 
   useEffect(() => {
@@ -361,7 +355,7 @@ export default function DeterministicKaraoke({
       {/* Hidden audio element used by the play/pause control above */}
       <audio
         ref={audioRef}
-        src={audioSrc}
+        src={audioSrc || undefined}
         preload="auto"
         onEnded={() => {
           setIsPlaying(false);
