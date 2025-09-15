@@ -1,0 +1,28 @@
+{
+    "languages_detected": [
+      "ms"
+    ],
+    "turns": [
+      {
+        "turn_id": 1,
+        "speaker": "SPEAKER_01",
+        "text": "Rasa sakit memang berubah bila saya berdiri, bila saya berdiri ia kurang rasa sakit yang tajam, tetapi bila saya duduk barulah rasa sakit itu lebih ketara."
+      },
+      {
+        "turn_id": 2,
+        "speaker": "SPEAKER_00",
+        "text": "Baik, itu maklumat yang berguna. Ia mungkin berkaitan dengan postur anda semasa duduk. Mungkin cuba laraskan kerusi anda atau tambah sokongan lumbar. Adakah itu memberi sebarang perbezaan?"
+      },
+      {
+        "turn_id": 3,
+        "speaker": "SPEAKER_01",
+        "text": "Tidak, saya rasa tidak kerana kerusi saya agak terlalu lembut."
+      },
+      {
+        "turn_id": 4,
+        "speaker": "SPEAKER_00",
+        "text": "Ya, kerusi yang lembut mungkin tidak memberi sokongan yang mencukupi, terutamanya untuk bahagian belakang anda. Itu memang boleh menyumbang kepada rasa sakit, mungkin cuba kerusi yang lebih keras, atau tambah kusyen untuk sokongan yang lebih baik."
+      }
+    ]
+  }
+  

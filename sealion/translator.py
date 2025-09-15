@@ -101,9 +101,132 @@ class SEALionTranslator:
                 time.sleep(60)  # Wait 1 minute on rate limit
             raise
     
+    def translate_bulk_conversation(self, turns: List[Dict[str, Any]]) -> List[str]:
+        """
+        Translate multiple conversation turns in one API call for efficiency
+        
+        Returns list of translated texts in the same order as input turns
+        """
+        try:
+            # Collect all non-empty texts with turn markers
+            turn_texts = []
+            turn_mapping = []  # Track which turns have text
+            
+            for i, turn in enumerate(turns):
+                if 'text' not in turn or not turn['text'].strip():
+                    continue
+                    
+                turn_texts.append(f"[TURN_{i+1}] {turn['text']}")
+                turn_mapping.append(i)
+            
+            if not turn_texts:
+                print("⚠️  No text content found to translate")
+                return [turn.get('text', '') for turn in turns]
+            
+            # Combine all turns into one text block
+            combined_text = "\n\n".join(turn_texts)
+            
+            print(f"🚀 Bulk translating {len(turn_texts)} turns in one API call...")
+            
+            # Create specialized prompt for conversation translation
+            prompt = f"""Please translate the following conversation turns to English. Each turn is marked with [TURN_X] followed by the text. 
+
+Preserve the exact [TURN_X] markers and return the translation in the same format, maintaining the same number of turns and order. If any text is already in English, return it unchanged but still with its [TURN_X] marker.
+
+{combined_text}"""
+            
+            print("🔄 Sending bulk translation request to SEA-LION API...")
+            
+            completion = self.client.chat.completions.create(
+                model="aisingapore/Gemma-SEA-LION-v4-27B-IT",
+                messages=[
+                    {
+                        "role": "user", 
+                        "content": prompt
+                    }
+                ],
+                temperature=0.1,  # Low temperature for consistent translations
+                max_tokens=4000   # Higher limit for bulk content
+            )
+            
+            translated_response = completion.choices[0].message.content.strip()
+            print("✅ Bulk translation completed")
+            
+            # Parse response back into individual turns
+            translated_texts = self._parse_bulk_response(translated_response, len(turns), turn_mapping)
+            
+            return translated_texts
+            
+        except Exception as e:
+            print(f"❌ Bulk translation failed: {str(e)}")
+            print("🔄 Falling back to individual turn translation...")
+            # Fallback to individual translation
+            return self._translate_turns_individually(turns)
+    
+    def _parse_bulk_response(self, response: str, total_turns: int, turn_mapping: List[int]) -> List[str]:
+        """Parse bulk translation response back into individual turn texts"""
+        try:
+            # Initialize result array with original texts
+            result = [''] * total_turns
+            
+            # Extract translated turns using regex or string splitting
+            import re
+            
+            # Find all [TURN_X] markers and their content
+            turn_pattern = r'\[TURN_(\d+)\]\s*(.*?)(?=\[TURN_\d+\]|$)'
+            matches = re.findall(turn_pattern, response, re.DOTALL)
+            
+            for turn_num_str, content in matches:
+                try:
+                    turn_index = int(turn_num_str) - 1  # Convert to 0-based index
+                    if 0 <= turn_index < total_turns:
+                        # Clean up the content
+                        cleaned_content = content.strip()
+                        result[turn_index] = cleaned_content
+                except (ValueError, IndexError):
+                    continue
+            
+            # Fill in any missing translations with empty strings
+            for i, text in enumerate(result):
+                if not text and i < len(turn_mapping):
+                    result[i] = ''  # Keep empty for missing translations
+            
+            return result
+            
+        except Exception as e:
+            print(f"⚠️  Error parsing bulk response: {str(e)}")
+            print("🔄 Falling back to individual turn translation...")
+            # Return empty list to trigger fallback
+            return []
+    
+    def _translate_turns_individually(self, turns: List[Dict[str, Any]]) -> List[str]:
+        """Fallback method: translate turns individually (original behavior)"""
+        result = []
+        
+        for i, turn in enumerate(turns):
+            if 'text' not in turn or not turn['text'].strip():
+                result.append(turn.get('text', ''))
+                continue
+            
+            print(f"📝 Translating turn {i+1}/{len(turns)} individually (Speaker: {turn.get('speaker', 'Unknown')})")
+            
+            try:
+                translated_text = self.translate_text(turn['text'])
+                result.append(translated_text)
+            except Exception as e:
+                print(f"⚠️  Error translating turn {i+1}: {str(e)}")
+                result.append(turn['text'])  # Keep original on error
+            
+            # Rate limiting between requests (except for last turn)
+            if i < len(turns) - 1:
+                print(f"⏳ Waiting {self.rate_limit_delay}s for rate limit...")
+                time.sleep(self.rate_limit_delay)
+        
+        return result
+
     def translate_json(self, json_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Translate JSON transcript data from whisperX lean format
+        Translate JSON transcript data from whisperX lean format using bulk translation
         
         Expected input format:
         {
@@ -131,29 +254,15 @@ class SEALionTranslator:
             # Create a deep copy to avoid modifying original
             translated_data = json.loads(json.dumps(json_data))
             
-            print(f"🎯 Translating {len(json_data['turns'])} turns...")
+            print(f"🎯 Preparing to translate {len(json_data['turns'])} turns using bulk translation...")
             
-            # Translate each turn
-            for i, turn in enumerate(translated_data['turns']):
-                if 'text' not in turn:
-                    print(f"⚠️  Turn {i+1} missing 'text' field, skipping")
-                    continue
-                
-                original_text = turn['text']
-                if not original_text.strip():
-                    print(f"⚠️  Turn {i+1} has empty text, skipping")
-                    continue
-                
-                print(f"📝 Translating turn {i+1}/{len(translated_data['turns'])} (Speaker: {turn.get('speaker', 'Unknown')})")
-                
-                # Translate the text
-                translated_text = self.translate_text(original_text)
-                turn['text'] = translated_text
-                
-                # Rate limiting between requests (except for last turn)
-                if i < len(translated_data['turns']) - 1:
-                    print(f"⏳ Waiting {self.rate_limit_delay}s for rate limit...")
-                    time.sleep(self.rate_limit_delay)
+            # Use bulk translation
+            translated_texts = self.translate_bulk_conversation(translated_data['turns'])
+            
+            # Apply translated texts back to turns
+            for i, (turn, translated_text) in enumerate(zip(translated_data['turns'], translated_texts)):
+                if translated_text:  # Only update if we got a translation
+                    turn['text'] = translated_text
             
             # Update languages_detected to indicate translation to English
             translated_data['languages_detected'] = ['en']
