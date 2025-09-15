@@ -83,12 +83,10 @@ export class DatabaseService {
       username: credentials.username,
       password: credentials.password,
       database: credentials.dbname,
-      ssl: true,
-      extra: {
-        ssl: {
-          rejectUnauthorized: false
-        }
-      }
+      ssl: {
+        require: true,
+        rejectUnauthorized: false, // let’s keep this off for RDS-managed certs
+      },
     };
   }
 
