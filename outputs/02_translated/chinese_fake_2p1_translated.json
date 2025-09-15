@@ -1,0 +1,27 @@
+{
+  "languages_detected": [
+    "en"
+  ],
+  "turns": [
+    {
+      "turn_id": 1,
+      "speaker": "SPEAKER_01",
+      "text": "When I stand up, the pain does change; it feels less sharp when standing, and only hurts quite a bit when I sit down."
+    },
+    {
+      "turn_id": 2,
+      "speaker": "SPEAKER_00",
+      "text": "Okay, that's helpful. This might be related to your posture while sitting. Perhaps you could try adjusting the chair, or adding some lumbar support. Would that make a difference?"
+    },
+    {
+      "turn_id": 3,
+      "speaker": "SPEAKER_01",
+      "text": "I don't think so, I think it's mainly because my chair is a little too soft."
+    },
+    {
+      "turn_id": 4,
+      "speaker": "SPEAKER_00",
+      "text": "Yes, a chair that's too soft might not provide enough support, especially for your back. This could indeed worsen the pain. Perhaps you could try a harder chair, or add a cushion to increase support."
+    }
+  ]
+}
