@@ -28,18 +28,14 @@ import { DatabaseModule } from './database/database.module';
 @Module({
   imports: [
     DatabaseModule,
-    ConfigModule.forRoot({
-      isGlobal: true,
-    }),
+    ConfigModule.forRoot({ isGlobal: true }),
     HttpModule.register({
       timeout: 60000,
       maxRedirects: 5,
     }),
     MulterModule.register({
       dest: './uploads',
-      limits: {
-        fileSize: 100 * 1024 * 1024, // 100MB limit for audio files
-      },
+      limits: { fileSize: 100 * 1024 * 1024 },
     }),
     TypeOrmModule.forRootAsync({
       imports: [DatabaseModule],
@@ -58,10 +54,9 @@ import { DatabaseModule } from './database/database.module';
           entities.Appointment,
           entities.AuditLog,
         ],
-        synchronize: false, // or true if you want auto schema sync in dev
+        synchronize: false,
       }),
     }),
-    // New modules
     UserModule,
     AuthModule,
     ConsentModule,
@@ -71,7 +66,7 @@ import { DatabaseModule } from './database/database.module';
     DashboardModule,
   ],
   controllers: [AnalyzeController, DatabaseController],
-  providers: [AnalyzeService, DatabaseService],
+  providers: [AnalyzeService], // 👈 remove DatabaseService here
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
@@ -82,3 +77,4 @@ export class AppModule implements NestModule {
       .forRoutes(AnalyzeController);
   }
 }
+
