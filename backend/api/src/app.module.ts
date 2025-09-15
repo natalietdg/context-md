@@ -19,13 +19,15 @@ import * as entities from './entities';
 // Legacy controllers and services
 import { AnalyzeController } from './controllers/analyze.controller';
 import { AnalyzeService } from './services/analyze.service';
-import { DatabaseService } from './services/database.service';
+import { DatabaseService } from './database/database.service';
 import { DatabaseController } from './controllers/database.controller';
 import { RateLimitMiddleware } from './middleware/rate-limit.middleware';
 import { SecurityMiddleware } from './middleware/security.middleware';
+import { DatabaseModule } from './database/database.module';
 
 @Module({
   imports: [
+    DatabaseModule,
     ConfigModule.forRoot({
       isGlobal: true,
     }),
@@ -40,6 +42,7 @@ import { SecurityMiddleware } from './middleware/security.middleware';
       },
     }),
     TypeOrmModule.forRootAsync({
+      imports: [DatabaseModule],
       inject: [DatabaseService],
       useFactory: async (dbService: DatabaseService) => ({
         type: 'postgres',
