@@ -3,6 +3,8 @@ import { DatabaseService } from './database.service';
 import { DatabaseController } from './database.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import * as entities from '../entities';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // database.module.ts
 @Module({
@@ -15,6 +17,7 @@ import * as entities from '../entities';
             password: process.env.DATABASE_PASSWORD ?? '',
             database: process.env.DATABASE_NAME ?? 'contextmd',
             ssl: process.env.ENVIRONMENT === "production" ? {
+                ca: fs.readFileSync(path.join(__dirname, '../rds-ca-2019-root.pem')).toString(),
                 rejectUnauthorized: false,
             } : false,
             entities: [
