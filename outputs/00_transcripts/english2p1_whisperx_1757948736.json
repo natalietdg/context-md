@@ -1,0 +1,1458 @@
+{
+  "segments": [
+    {
+      "start": 0.031,
+      "end": 7.362,
+      "text": " The pain does change when I stand up when I stand up it feels less of a sharp pain with only when I'm sitting down.",
+      "words": [
+        {
+          "word": "The",
+          "start": 0.031,
+          "end": 0.952,
+          "score": 0.968,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "pain",
+          "start": 1.013,
+          "end": 1.233,
+          "score": 0.907,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "does",
+          "start": 1.293,
+          "end": 1.473,
+          "score": 0.457,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "change",
+          "start": 1.593,
+          "end": 1.894,
+          "score": 0.869,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "when",
+          "start": 1.934,
+          "end": 2.074,
+          "score": 0.989,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "I",
+          "start": 2.154,
+          "end": 2.214,
+          "score": 0.839,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "stand",
+          "start": 2.315,
+          "end": 2.635,
+          "score": 0.956,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "up",
+          "start": 2.855,
+          "end": 2.936,
+          "score": 0.986,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "when",
+          "start": 3.056,
+          "end": 3.176,
+          "score": 0.436,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "I",
+          "start": 3.196,
+          "end": 3.256,
+          "score": 0.524,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "stand",
+          "start": 3.296,
+          "end": 3.536,
+          "score": 0.695,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "up",
+          "start": 3.597,
+          "end": 3.677,
+          "score": 0.702,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "it",
+          "start": 3.817,
+          "end": 3.857,
+          "score": 0.349,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "feels",
+          "start": 4.117,
+          "end": 4.418,
+          "score": 0.8,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "less",
+          "start": 4.798,
+          "end": 4.999,
+          "score": 0.49,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "of",
+          "start": 5.019,
+          "end": 5.159,
+          "score": 0.798,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "a",
+          "start": 5.199,
+          "end": 5.259,
+          "score": 0.88,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "sharp",
+          "start": 5.319,
+          "end": 5.58,
+          "score": 0.76,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "pain",
+          "start": 5.62,
+          "end": 5.84,
+          "score": 0.846,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "with",
+          "start": 5.86,
+          "end": 5.94,
+          "score": 0.418,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "only",
+          "start": 6.181,
+          "end": 6.401,
+          "score": 0.632,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "when",
+          "start": 6.421,
+          "end": 6.521,
+          "score": 0.461,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "I'm",
+          "start": 6.581,
+          "end": 6.681,
+          "score": 0.318,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "sitting",
+          "start": 6.701,
+          "end": 7.042,
+          "score": 0.829,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "down.",
+          "start": 7.082,
+          "end": 7.362,
+          "score": 0.833,
+          "speaker": "SPEAKER_01"
+        }
+      ],
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 10.467,
+      "end": 11.409,
+      "text": "Okay, that's good to know.",
+      "words": [
+        {
+          "word": "Okay,",
+          "start": 10.467,
+          "end": 10.728,
+          "score": 0.611,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "that's",
+          "start": 10.788,
+          "end": 10.948,
+          "score": 0.872,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "good",
+          "start": 10.988,
+          "end": 11.108,
+          "score": 0.997,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "to",
+          "start": 11.148,
+          "end": 11.208,
+          "score": 0.615,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "know.",
+          "start": 11.228,
+          "end": 11.409,
+          "score": 0.784,
+          "speaker": "SPEAKER_00"
+        }
+      ],
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 12.01,
+      "end": 13.812,
+      "text": "It could be related to your posture while sitting.",
+      "words": [
+        {
+          "word": "It",
+          "start": 12.01,
+          "end": 12.05,
+          "score": 0.977,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "could",
+          "start": 12.07,
+          "end": 12.19,
+          "score": 0.969,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "be",
+          "start": 12.21,
+          "end": 12.27,
+          "score": 0.982,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "related",
+          "start": 12.33,
+          "end": 12.631,
+          "score": 0.912,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "to",
+          "start": 12.671,
+          "end": 12.731,
+          "score": 0.77,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "your",
+          "start": 12.771,
+          "end": 12.871,
+          "score": 0.833,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "posture",
+          "start": 12.951,
+          "end": 13.312,
+          "score": 0.78,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "while",
+          "start": 13.352,
+          "end": 13.512,
+          "score": 0.816,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "sitting.",
+          "start": 13.572,
+          "end": 13.812,
+          "score": 0.975,
+          "speaker": "SPEAKER_00"
+        }
+      ],
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 14.333,
+      "end": 18.299,
+      "text": "Perhaps try adjusting your chair or adding some lumbar support.",
+      "words": [
+        {
+          "word": "Perhaps",
+          "start": 14.333,
+          "end": 14.614,
+          "score": 0.818,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "try",
+          "start": 14.694,
+          "end": 14.834,
+          "score": 0.813,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "adjusting",
+          "start": 14.874,
+          "end": 15.215,
+          "score": 0.747,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "your",
+          "start": 15.255,
+          "end": 15.355,
+          "score": 0.946,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "chair",
+          "start": 15.415,
+          "end": 15.655,
+          "score": 0.929,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "or",
+          "start": 16.096,
+          "end": 16.216,
+          "score": 0.744,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "adding",
+          "start": 16.256,
+          "end": 16.597,
+          "score": 0.911,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "some",
+          "start": 16.637,
+          "end": 16.777,
+          "score": 0.91,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "lumbar",
+          "start": 16.817,
+          "end": 17.138,
+          "score": 0.86,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "support.",
+          "start": 17.158,
+          "end": 18.299,
+          "score": 0.862,
+          "speaker": "SPEAKER_00"
+        }
+      ],
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 18.319,
+      "end": 20.743,
+      "text": "Does that make any difference?",
+      "words": [
+        {
+          "word": "Does",
+          "start": 18.319,
+          "end": 18.44,
+          "score": 0.885,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "that",
+          "start": 18.48,
+          "end": 18.58,
+          "score": 0.931,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "make",
+          "start": 18.62,
+          "end": 18.78,
+          "score": 0.832,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "any",
+          "start": 18.84,
+          "end": 18.94,
+          "score": 0.863,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "difference?",
+          "start": 19.001,
+          "end": 20.743,
+          "score": 0.889,
+          "speaker": "SPEAKER_00"
+        }
+      ],
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 20.763,
+      "end": 25.11,
+      "text": "No, I don't think so because my chair is a bit too soft.",
+      "words": [
+        {
+          "word": "No,",
+          "start": 20.763,
+          "end": 20.924,
+          "score": 0.983,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "I",
+          "start": 20.964,
+          "end": 20.984,
+          "score": 0.997,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "don't",
+          "start": 21.024,
+          "end": 21.184,
+          "score": 0.663,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "think",
+          "start": 21.244,
+          "end": 21.424,
+          "score": 0.887,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "so",
+          "start": 21.504,
+          "end": 21.745,
+          "score": 0.926,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "because",
+          "start": 21.925,
+          "end": 22.386,
+          "score": 0.8,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "my",
+          "start": 23.427,
+          "end": 23.548,
+          "score": 0.978,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "chair",
+          "start": 23.628,
+          "end": 23.888,
+          "score": 0.487,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "is",
+          "start": 23.908,
+          "end": 24.008,
+          "score": 0.654,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "a",
+          "start": 24.088,
+          "end": 24.149,
+          "score": 0.779,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "bit",
+          "start": 24.169,
+          "end": 24.369,
+          "score": 0.634,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "too",
+          "start": 24.389,
+          "end": 24.589,
+          "score": 0.784,
+          "speaker": "SPEAKER_01"
+        },
+        {
+          "word": "soft.",
+          "start": 24.649,
+          "end": 25.11,
+          "score": 0.782,
+          "speaker": "SPEAKER_01"
+        }
+      ],
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 28.988,
+      "end": 32.94,
+      "text": " Yes, a soft chair might not provide enough support, especially for your back.",
+      "words": [
+        {
+          "word": "Yes,",
+          "start": 28.988,
+          "end": 29.309,
+          "score": 0.898,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "a",
+          "start": 29.65,
+          "end": 29.69,
+          "score": 0.997,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "soft",
+          "start": 29.73,
+          "end": 29.951,
+          "score": 0.961,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "chair",
+          "start": 29.971,
+          "end": 30.131,
+          "score": 0.889,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "might",
+          "start": 30.171,
+          "end": 30.292,
+          "score": 0.69,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "not",
+          "start": 30.332,
+          "end": 30.432,
+          "score": 0.831,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "provide",
+          "start": 30.472,
+          "end": 30.713,
+          "score": 0.998,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "enough",
+          "start": 30.753,
+          "end": 30.914,
+          "score": 0.906,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "support,",
+          "start": 30.954,
+          "end": 31.315,
+          "score": 0.878,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "especially",
+          "start": 31.656,
+          "end": 32.017,
+          "score": 0.895,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "for",
+          "start": 32.057,
+          "end": 32.157,
+          "score": 0.813,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "your",
+          "start": 32.197,
+          "end": 32.298,
+          "score": 0.874,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "back.",
+          "start": 32.338,
+          "end": 32.94,
+          "score": 0.712,
+          "speaker": "SPEAKER_00"
+        }
+      ],
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 32.96,
+      "end": 38.155,
+      "text": "That could definitely contribute to the pain, perhaps try a firmer chair, or add a cushion for better support.",
+      "words": [
+        {
+          "word": "That",
+          "start": 32.96,
+          "end": 33.08,
+          "score": 0.934,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "could",
+          "start": 33.12,
+          "end": 33.241,
+          "score": 0.807,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "definitely",
+          "start": 33.281,
+          "end": 33.642,
+          "score": 0.967,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "contribute",
+          "start": 33.682,
+          "end": 34.083,
+          "score": 0.926,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "to",
+          "start": 34.163,
+          "end": 34.264,
+          "score": 0.808,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "the",
+          "start": 34.284,
+          "end": 34.364,
+          "score": 0.83,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "pain,",
+          "start": 34.404,
+          "end": 34.645,
+          "score": 0.94,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "perhaps",
+          "start": 34.926,
+          "end": 35.206,
+          "score": 0.708,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "try",
+          "start": 35.267,
+          "end": 35.447,
+          "score": 0.995,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "a",
+          "start": 35.487,
+          "end": 35.507,
+          "score": 0.664,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "firmer",
+          "start": 35.547,
+          "end": 35.848,
+          "score": 0.814,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "chair,",
+          "start": 35.908,
+          "end": 36.149,
+          "score": 0.864,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "or",
+          "start": 36.47,
+          "end": 36.55,
+          "score": 0.83,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "add",
+          "start": 36.611,
+          "end": 36.691,
+          "score": 0.5,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "a",
+          "start": 36.731,
+          "end": 36.751,
+          "score": 1.0,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "cushion",
+          "start": 36.811,
+          "end": 37.092,
+          "score": 0.846,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "for",
+          "start": 37.132,
+          "end": 37.232,
+          "score": 0.828,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "better",
+          "start": 37.272,
+          "end": 37.453,
+          "score": 0.95,
+          "speaker": "SPEAKER_00"
+        },
+        {
+          "word": "support.",
+          "start": 37.493,
+          "end": 38.155,
+          "score": 0.943,
+          "speaker": "SPEAKER_00"
+        }
+      ],
+      "speaker": "SPEAKER_00"
+    }
+  ],
+  "word_segments": [
+    {
+      "word": "The",
+      "start": 0.031,
+      "end": 0.952,
+      "score": 0.968,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "pain",
+      "start": 1.013,
+      "end": 1.233,
+      "score": 0.907,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "does",
+      "start": 1.293,
+      "end": 1.473,
+      "score": 0.457,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "change",
+      "start": 1.593,
+      "end": 1.894,
+      "score": 0.869,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "when",
+      "start": 1.934,
+      "end": 2.074,
+      "score": 0.989,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "I",
+      "start": 2.154,
+      "end": 2.214,
+      "score": 0.839,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "stand",
+      "start": 2.315,
+      "end": 2.635,
+      "score": 0.956,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "up",
+      "start": 2.855,
+      "end": 2.936,
+      "score": 0.986,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "when",
+      "start": 3.056,
+      "end": 3.176,
+      "score": 0.436,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "I",
+      "start": 3.196,
+      "end": 3.256,
+      "score": 0.524,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "stand",
+      "start": 3.296,
+      "end": 3.536,
+      "score": 0.695,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "up",
+      "start": 3.597,
+      "end": 3.677,
+      "score": 0.702,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "it",
+      "start": 3.817,
+      "end": 3.857,
+      "score": 0.349,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "feels",
+      "start": 4.117,
+      "end": 4.418,
+      "score": 0.8,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "less",
+      "start": 4.798,
+      "end": 4.999,
+      "score": 0.49,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "of",
+      "start": 5.019,
+      "end": 5.159,
+      "score": 0.798,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "a",
+      "start": 5.199,
+      "end": 5.259,
+      "score": 0.88,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "sharp",
+      "start": 5.319,
+      "end": 5.58,
+      "score": 0.76,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "pain",
+      "start": 5.62,
+      "end": 5.84,
+      "score": 0.846,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "with",
+      "start": 5.86,
+      "end": 5.94,
+      "score": 0.418,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "only",
+      "start": 6.181,
+      "end": 6.401,
+      "score": 0.632,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "when",
+      "start": 6.421,
+      "end": 6.521,
+      "score": 0.461,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "I'm",
+      "start": 6.581,
+      "end": 6.681,
+      "score": 0.318,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "sitting",
+      "start": 6.701,
+      "end": 7.042,
+      "score": 0.829,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "down.",
+      "start": 7.082,
+      "end": 7.362,
+      "score": 0.833,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "Okay,",
+      "start": 10.467,
+      "end": 10.728,
+      "score": 0.611,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "that's",
+      "start": 10.788,
+      "end": 10.948,
+      "score": 0.872,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "good",
+      "start": 10.988,
+      "end": 11.108,
+      "score": 0.997,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "to",
+      "start": 11.148,
+      "end": 11.208,
+      "score": 0.615,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "know.",
+      "start": 11.228,
+      "end": 11.409,
+      "score": 0.784,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "It",
+      "start": 12.01,
+      "end": 12.05,
+      "score": 0.977,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "could",
+      "start": 12.07,
+      "end": 12.19,
+      "score": 0.969,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "be",
+      "start": 12.21,
+      "end": 12.27,
+      "score": 0.982,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "related",
+      "start": 12.33,
+      "end": 12.631,
+      "score": 0.912,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "to",
+      "start": 12.671,
+      "end": 12.731,
+      "score": 0.77,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "your",
+      "start": 12.771,
+      "end": 12.871,
+      "score": 0.833,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "posture",
+      "start": 12.951,
+      "end": 13.312,
+      "score": 0.78,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "while",
+      "start": 13.352,
+      "end": 13.512,
+      "score": 0.816,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "sitting.",
+      "start": 13.572,
+      "end": 13.812,
+      "score": 0.975,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "Perhaps",
+      "start": 14.333,
+      "end": 14.614,
+      "score": 0.818,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "try",
+      "start": 14.694,
+      "end": 14.834,
+      "score": 0.813,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "adjusting",
+      "start": 14.874,
+      "end": 15.215,
+      "score": 0.747,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "your",
+      "start": 15.255,
+      "end": 15.355,
+      "score": 0.946,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "chair",
+      "start": 15.415,
+      "end": 15.655,
+      "score": 0.929,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "or",
+      "start": 16.096,
+      "end": 16.216,
+      "score": 0.744,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "adding",
+      "start": 16.256,
+      "end": 16.597,
+      "score": 0.911,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "some",
+      "start": 16.637,
+      "end": 16.777,
+      "score": 0.91,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "lumbar",
+      "start": 16.817,
+      "end": 17.138,
+      "score": 0.86,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "support.",
+      "start": 17.158,
+      "end": 18.299,
+      "score": 0.862,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "Does",
+      "start": 18.319,
+      "end": 18.44,
+      "score": 0.885,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "that",
+      "start": 18.48,
+      "end": 18.58,
+      "score": 0.931,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "make",
+      "start": 18.62,
+      "end": 18.78,
+      "score": 0.832,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "any",
+      "start": 18.84,
+      "end": 18.94,
+      "score": 0.863,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "difference?",
+      "start": 19.001,
+      "end": 20.743,
+      "score": 0.889,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "No,",
+      "start": 20.763,
+      "end": 20.924,
+      "score": 0.983,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "I",
+      "start": 20.964,
+      "end": 20.984,
+      "score": 0.997,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "don't",
+      "start": 21.024,
+      "end": 21.184,
+      "score": 0.663,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "think",
+      "start": 21.244,
+      "end": 21.424,
+      "score": 0.887,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "so",
+      "start": 21.504,
+      "end": 21.745,
+      "score": 0.926,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "because",
+      "start": 21.925,
+      "end": 22.386,
+      "score": 0.8,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "my",
+      "start": 23.427,
+      "end": 23.548,
+      "score": 0.978,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "chair",
+      "start": 23.628,
+      "end": 23.888,
+      "score": 0.487,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "is",
+      "start": 23.908,
+      "end": 24.008,
+      "score": 0.654,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "a",
+      "start": 24.088,
+      "end": 24.149,
+      "score": 0.779,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "bit",
+      "start": 24.169,
+      "end": 24.369,
+      "score": 0.634,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "too",
+      "start": 24.389,
+      "end": 24.589,
+      "score": 0.784,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "soft.",
+      "start": 24.649,
+      "end": 25.11,
+      "score": 0.782,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "word": "Yes,",
+      "start": 28.988,
+      "end": 29.309,
+      "score": 0.898,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "a",
+      "start": 29.65,
+      "end": 29.69,
+      "score": 0.997,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "soft",
+      "start": 29.73,
+      "end": 29.951,
+      "score": 0.961,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "chair",
+      "start": 29.971,
+      "end": 30.131,
+      "score": 0.889,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "might",
+      "start": 30.171,
+      "end": 30.292,
+      "score": 0.69,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "not",
+      "start": 30.332,
+      "end": 30.432,
+      "score": 0.831,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "provide",
+      "start": 30.472,
+      "end": 30.713,
+      "score": 0.998,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "enough",
+      "start": 30.753,
+      "end": 30.914,
+      "score": 0.906,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "support,",
+      "start": 30.954,
+      "end": 31.315,
+      "score": 0.878,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "especially",
+      "start": 31.656,
+      "end": 32.017,
+      "score": 0.895,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "for",
+      "start": 32.057,
+      "end": 32.157,
+      "score": 0.813,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "your",
+      "start": 32.197,
+      "end": 32.298,
+      "score": 0.874,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "back.",
+      "start": 32.338,
+      "end": 32.94,
+      "score": 0.712,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "That",
+      "start": 32.96,
+      "end": 33.08,
+      "score": 0.934,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "could",
+      "start": 33.12,
+      "end": 33.241,
+      "score": 0.807,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "definitely",
+      "start": 33.281,
+      "end": 33.642,
+      "score": 0.967,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "contribute",
+      "start": 33.682,
+      "end": 34.083,
+      "score": 0.926,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "to",
+      "start": 34.163,
+      "end": 34.264,
+      "score": 0.808,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "the",
+      "start": 34.284,
+      "end": 34.364,
+      "score": 0.83,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "pain,",
+      "start": 34.404,
+      "end": 34.645,
+      "score": 0.94,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "perhaps",
+      "start": 34.926,
+      "end": 35.206,
+      "score": 0.708,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "try",
+      "start": 35.267,
+      "end": 35.447,
+      "score": 0.995,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "a",
+      "start": 35.487,
+      "end": 35.507,
+      "score": 0.664,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "firmer",
+      "start": 35.547,
+      "end": 35.848,
+      "score": 0.814,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "chair,",
+      "start": 35.908,
+      "end": 36.149,
+      "score": 0.864,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "or",
+      "start": 36.47,
+      "end": 36.55,
+      "score": 0.83,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "add",
+      "start": 36.611,
+      "end": 36.691,
+      "score": 0.5,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "a",
+      "start": 36.731,
+      "end": 36.751,
+      "score": 1.0,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "cushion",
+      "start": 36.811,
+      "end": 37.092,
+      "score": 0.846,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "for",
+      "start": 37.132,
+      "end": 37.232,
+      "score": 0.828,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "better",
+      "start": 37.272,
+      "end": 37.453,
+      "score": 0.95,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "word": "support.",
+      "start": 37.493,
+      "end": 38.155,
+      "score": 0.943,
+      "speaker": "SPEAKER_00"
+    }
+  ],
+  "language": "en",
+  "detected_language": "en"
+}

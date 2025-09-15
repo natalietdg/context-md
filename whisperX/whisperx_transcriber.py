@@ -57,9 +57,10 @@ class WhisperXTranscriber:
             cache_dir = os.path.join(os.path.dirname(__file__), "..", "audio_cache")
         self.s3_downloader = S3AudioDownloader(cache_dir=cache_dir)
         
-        # Output directories for transcripts
-        self.output_dir = os.path.join(os.path.dirname(__file__), "transcript_output")
-        self.output_dir_lean = os.path.join(os.path.dirname(__file__), "transcript_output_lean")
+        # Output directories for transcripts - using project outputs structure
+        project_root = os.path.dirname(os.path.dirname(__file__))
+        self.output_dir = os.path.join(project_root, "outputs", "00_transcripts")
+        self.output_dir_lean = os.path.join(project_root, "outputs", "01_transcripts_lean")
         Path(self.output_dir).mkdir(parents=True, exist_ok=True)
         Path(self.output_dir_lean).mkdir(parents=True, exist_ok=True)
         

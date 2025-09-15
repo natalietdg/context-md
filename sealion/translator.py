@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-SEA-LION Translator
+SEA-LION JSON Translator
 
-Translates transcript .txt files from transcript_output/ to English using SEA-LION API.
+Translates JSON transcript data from whisperX lean format to English using SEA-LION API.
+Input and output formats are identical, only the text content is translated.
 
 Requirements:
 - Python 3.9+
@@ -10,16 +11,15 @@ Requirements:
 - Optional: python-dotenv for .env support
 
 Usage:
-    python sealion/translator.py                          # Translate all .txt files
-    python sealion/translator.py --file filename.txt     # Translate specific file
+    translator = SEALionTranslator()
+    translated_json = translator.translate_json(input_json_data)
 """
 
 import os
 import sys
 import time
-import argparse
-from pathlib import Path
-from typing import Optional, List
+import json
+from typing import Dict, List, Any, Optional
 
 # Optional .env support - continue silently if not available
 try:
@@ -36,7 +36,7 @@ except ImportError:
 
 
 class SEALionTranslator:
-    """SEA-LION API client for translating transcripts to English"""
+    """SEA-LION API client for translating JSON transcript data to English"""
     
     def __init__(self, api_key: Optional[str] = None):
         """Initialize SEA-LION API client"""
@@ -57,46 +57,21 @@ class SEALionTranslator:
         
         print("✅ Connected to SEA-LION API")
     
-    def get_transcript_files(self, specific_file: Optional[str] = None) -> List[Path]:
-        """Get list of transcript files to translate"""
-        project_root = Path(__file__).parent.parent
-        transcript_dir = project_root / "aws" / "transcript_output"
+    def should_skip_translation(self, json_data: Dict[str, Any]) -> bool:
+        """Check if translation should be skipped (already English)"""
+        languages_detected = json_data.get('languages_detected', [])
         
-        if not transcript_dir.exists():
-            print(f"❌ Transcript directory not found: {transcript_dir}")
-            print("Run the transcriber first to generate transcript files")
-            return []
+        # Skip if languages_detected contains only 'en'
+        if languages_detected == ['en']:
+            print("🔍 Content already in English, skipping translation")
+            return True
         
-        if specific_file:
-            file_path = transcript_dir / specific_file
-            if not file_path.exists():
-                print(f"❌ File not found: {file_path}")
-                return []
-            if not file_path.suffix == '.txt':
-                print(f"❌ File must be a .txt file: {file_path}")
-                return []
-            return [file_path]
-        
-        # Get all .txt files
-        txt_files = list(transcript_dir.glob("*_transcript.txt"))
-        
-        if not txt_files:
-            print(f"❌ No transcript .txt files found in {transcript_dir}")
-            print("Run the transcriber first to generate transcript files")
-            return []
-        
-        return sorted(txt_files)
+        return False
     
-    def translate_text(self, text: str, source_language: str = "auto-detect") -> str:
+    def translate_text(self, text: str) -> str:
         """Translate text to English using SEA-LION API"""
         try:
-            # Create translation prompt
-            if source_language == "auto-detect":
-                prompt = f"""Please translate the following text to English. If the text is already in English, return it unchanged. Preserve the speaker labels (like "Speaker 0:", "Speaker 1:") and formatting:
-
-{text}"""
-            else:
-                prompt = f"""Please translate the following {source_language} text to English. Preserve the speaker labels (like "Speaker 0:", "Speaker 1:") and formatting:
+            prompt = f"""Please translate the following text to English. If the text is already in English, return it unchanged. Preserve the original meaning and tone:
 
 {text}"""
             
@@ -111,7 +86,7 @@ class SEALionTranslator:
                     }
                 ],
                 temperature=0.1,  # Low temperature for consistent translations
-                max_tokens=4000   # Reasonable limit for translations
+                max_tokens=1000   # Reasonable limit for individual text segments
             )
             
             translated_text = completion.choices[0].message.content.strip()
@@ -126,113 +101,99 @@ class SEALionTranslator:
                 time.sleep(60)  # Wait 1 minute on rate limit
             raise
     
-    def process_file(self, file_path: Path) -> bool:
-        """Process a single transcript file"""
+    def translate_json(self, json_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Translate JSON transcript data from whisperX lean format
+        
+        Expected input format:
+        {
+            "languages_detected": ["ms"],
+            "turns": [
+                {
+                    "turn_id": 1,
+                    "speaker": "SPEAKER_01",
+                    "text": "original text here"
+                }
+            ]
+        }
+        
+        Returns same format with translated text
+        """
         try:
-            print(f"\n📄 Processing: {file_path.name}")
+            # Validate input format
+            if 'turns' not in json_data:
+                raise ValueError("Invalid JSON format: missing 'turns' array")
             
-            # Read original file
-            with open(file_path, 'r', encoding='utf-8') as f:
-                original_text = f.read().strip()
+            # Check if we should skip translation
+            if self.should_skip_translation(json_data):
+                return json_data
             
-            if not original_text:
-                print("⚠️  File is empty, skipping")
-                return True
+            # Create a deep copy to avoid modifying original
+            translated_data = json.loads(json.dumps(json_data))
             
-            print(f"📊 Original text length: {len(original_text)} characters")
+            print(f"🎯 Translating {len(json_data['turns'])} turns...")
             
-            # Check if already in English (simple heuristic)
-            if self.is_likely_english(original_text):
-                print("🔍 Text appears to already be in English, translating anyway to ensure consistency...")
+            # Translate each turn
+            for i, turn in enumerate(translated_data['turns']):
+                if 'text' not in turn:
+                    print(f"⚠️  Turn {i+1} missing 'text' field, skipping")
+                    continue
+                
+                original_text = turn['text']
+                if not original_text.strip():
+                    print(f"⚠️  Turn {i+1} has empty text, skipping")
+                    continue
+                
+                print(f"📝 Translating turn {i+1}/{len(translated_data['turns'])} (Speaker: {turn.get('speaker', 'Unknown')})")
+                
+                # Translate the text
+                translated_text = self.translate_text(original_text)
+                turn['text'] = translated_text
+                
+                # Rate limiting between requests (except for last turn)
+                if i < len(translated_data['turns']) - 1:
+                    print(f"⏳ Waiting {self.rate_limit_delay}s for rate limit...")
+                    time.sleep(self.rate_limit_delay)
             
-            # Translate
-            translated_text = self.translate_text(original_text)
+            # Update languages_detected to indicate translation to English
+            translated_data['languages_detected'] = ['en']
             
-            # Create output filename
-            original_name = file_path.stem  # Remove .txt extension
-            if original_name.endswith('_transcript'):
-                base_name = original_name[:-11]  # Remove '_transcript'
-            else:
-                base_name = original_name
-            
-            output_filename = f"{base_name}_transcript_en.txt"
-            output_path = file_path.parent / output_filename
-            
-            # Save translated file
-            with open(output_path, 'w', encoding='utf-8') as f:
-                f.write(translated_text)
-            
-            print(f"💾 Saved translation: {output_filename}")
-            print(f"📊 Translated text length: {len(translated_text)} characters")
-            
-            return True
+            print("🎉 JSON translation complete!")
+            return translated_data
             
         except Exception as e:
-            print(f"❌ Failed to process {file_path.name}: {str(e)}")
-            return False
+            print(f"❌ Failed to translate JSON: {str(e)}")
+            raise
     
-    def is_likely_english(self, text: str) -> bool:
-        """Simple heuristic to check if text is likely English"""
-        # Count common English words
-        english_indicators = [
-            'the', 'and', 'is', 'in', 'to', 'of', 'a', 'that', 'it', 'with',
-            'for', 'as', 'was', 'on', 'are', 'you', 'this', 'be', 'at', 'have'
-        ]
-        
-        text_lower = text.lower()
-        english_word_count = sum(1 for word in english_indicators if f' {word} ' in text_lower)
-        
-        # If we find several common English words, it's likely English
-        return english_word_count >= 3
-    
-    def translate_files(self, specific_file: Optional[str] = None):
-        """Main method to translate transcript files"""
-        files_to_process = self.get_transcript_files(specific_file)
-        
-        if not files_to_process:
-            return
-        
-        print(f"🎯 Found {len(files_to_process)} file(s) to translate")
-        
-        successful = 0
-        failed = 0
-        
-        for i, file_path in enumerate(files_to_process):
-            if self.process_file(file_path):
-                successful += 1
-            else:
-                failed += 1
+    def translate_json_string(self, json_string: str) -> str:
+        """
+        Convenience method to translate JSON string input and return JSON string output
+        """
+        try:
+            # Parse JSON string
+            json_data = json.loads(json_string)
             
-            # Rate limiting - wait between requests (except for last file)
-            if i < len(files_to_process) - 1:
-                print(f"⏳ Waiting {self.rate_limit_delay}s for rate limit...")
-                time.sleep(self.rate_limit_delay)
-        
-        print(f"\n🎉 Translation complete!")
-        print(f"✅ Successfully translated: {successful}")
-        if failed > 0:
-            print(f"❌ Failed: {failed}")
+            # Translate
+            translated_data = self.translate_json(json_data)
+            
+            # Return as JSON string
+            return json.dumps(translated_data, indent=2, ensure_ascii=False)
+            
+        except json.JSONDecodeError as e:
+            print(f"❌ Invalid JSON input: {str(e)}")
+            raise
+        except Exception as e:
+            print(f"❌ Translation failed: {str(e)}")
+            raise
 
 
 def main():
-    """Main entry point"""
-    parser = argparse.ArgumentParser(
-        description='Translate transcript .txt files to English using SEA-LION API'
-    )
-    parser.add_argument(
-        '--file', '-f',
-        help='Specific .txt file to translate (optional, default: translate all)'
-    )
-    parser.add_argument(
-        '--api-key', '-k',
-        help='SEA-LION API key (optional, default: from SEALION_API_KEY env var)'
-    )
-    
-    args = parser.parse_args()
-    
-    # Create translator and process files
-    translator = SEALionTranslator(api_key=args.api_key)
-    translator.translate_files(specific_file=args.file)
+    """Demo usage"""
+    print("SEA-LION JSON Translator - Demo Mode")
+    print("This is a library class. Import and use programmatically.")
+    print("Example usage:")
+    print("  translator = SEALionTranslator()")
+    print("  result = translator.translate_json(your_json_data)")
 
 
 if __name__ == '__main__':
