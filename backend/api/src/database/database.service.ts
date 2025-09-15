@@ -75,14 +75,12 @@ export class DatabaseService {
   }
 
   async getDatabaseConfig() {
-    const credentials = await this.getDatabaseCredentials();
-    
     return {
-      host: credentials.host,
-      port: credentials.port,
-      username: credentials.username,
-      password: credentials.password,
-      database: credentials.dbname,
+      host: process.env.DATABASE_HOST,
+      port: process.env.DATABASE_PORT,
+      username: process.env.DATABASE_USER,
+      password: process.env.DATABASE_PASSWORD,
+      database: process.env.DATABASE_NAME,
       ssl: {
         require: true,
         rejectUnauthorized: false, // let’s keep this off for RDS-managed certs
