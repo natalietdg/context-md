@@ -1,0 +1,21 @@
+{
+  "chief_complaint": "SPEAKER_01: The pain does change when I stand up when I stand up it feels less of a sharp pain with only when I'm sit...",
+  "symptoms_present": [
+    "pain"
+  ],
+  "symptoms_negated": [],
+  "onset_or_duration": null,
+  "allergy_substance": [],
+  "meds_current": [],
+  "conditions_past": [],
+  "primary_diagnosis": null,
+  "rx_drug": null,
+  "rx_dose": null,
+  "follow_up": null,
+  "red_flags": [],
+  "_metadata": {
+    "source_file": "english2p1_lean_1757948736_translated.json",
+    "processed_timestamp": null,
+    "original_text_length": 582
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "chief_complaint": "SPEAKER_01: Doctor, I've been having shortness of breath and chest tightness for about three days, especially when cl...",
+  "symptoms_present": [
+    "shortness of breath",
+    "tightness",
+    "high",
+    "pain",
+    "sweating",
+    "chest pain",
+    "fever",
+    "cough",
+    "breathlessness"
+  ],
+  "symptoms_negated": [
+    "pain",
+    "chest pain",
+    "fever",
+    "cough"
+  ],
+  "onset_or_duration": null,
+  "allergy_substance": [
+    "panadol",
+    "to medications like panadol or aspirin? speaker_01: yes"
+  ],
+  "meds_current": [
+    "metform",
+    "amlodi",
+    "panadol",
+    "aspi",
+    "nitroglycerin",
+    "aspirin",
+    "metformin",
+    "amlodipine"
+  ],
+  "conditions_past": [],
+  "primary_diagnosis": "diagnosis is stable angina",
+  "rx_drug": "nitroglycerin",
+  "rx_dose": "0.4 mg as needed",
+  "follow_up": "follow-up in two weeks",
+  "red_flags": [
+    "go to the emergency",
+    "breathlessness",
+    "severe breathlessness",
+    "chest pain at rest"
+  ],
+  "_metadata": {
+    "source_file": "test_sample.json",
+    "processed_timestamp": null,
+    "original_text_length": 1098
+  }
+}
