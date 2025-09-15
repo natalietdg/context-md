@@ -53,7 +53,8 @@
           "end": 2.956,
           "score": 0.952
         }
-      ]
+      ],
+      "speaker": "SPEAKER_01"
     },
     {
       "start": 3.056,
@@ -156,7 +157,8 @@
           "end": 7.362,
           "score": 0.833
         }
-      ]
+      ],
+      "speaker": "SPEAKER_01"
     },
     {
       "start": 10.467,
@@ -193,7 +195,8 @@
           "end": 11.409,
           "score": 0.784
         }
-      ]
+      ],
+      "speaker": "SPEAKER_00"
     },
     {
       "start": 12.01,
@@ -254,7 +257,8 @@
           "end": 13.812,
           "score": 0.975
         }
-      ]
+      ],
+      "speaker": "SPEAKER_00"
     },
     {
       "start": 14.333,
@@ -321,7 +325,8 @@
           "end": 18.299,
           "score": 0.862
         }
-      ]
+      ],
+      "speaker": "SPEAKER_00"
     },
     {
       "start": 18.319,
@@ -358,7 +363,8 @@
           "end": 20.743,
           "score": 0.889
         }
-      ]
+      ],
+      "speaker": "SPEAKER_00"
     },
     {
       "start": 20.763,
@@ -443,7 +449,8 @@
           "end": 25.11,
           "score": 0.782
         }
-      ]
+      ],
+      "speaker": "SPEAKER_01"
     },
     {
       "start": 28.988,
@@ -528,7 +535,8 @@
           "end": 32.94,
           "score": 0.712
         }
-      ]
+      ],
+      "speaker": "SPEAKER_00"
     },
     {
       "start": 32.96,
@@ -649,7 +657,8 @@
           "end": 38.155,
           "score": 0.943
         }
-      ]
+      ],
+      "speaker": "SPEAKER_00"
     }
   ],
   "language": "en",

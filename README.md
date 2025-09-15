@@ -1,6 +1,6 @@
 # Context-MD
 
-Audio transcription and translation pipeline using AWS Transcribe and SEA-LION API.
+Multi-modal audio transcription and translation pipelines using AWS Transcribe, WhisperX, Clinical Transcription with MERaLiON, and SEA-LION API.
 
 ## Project Structure
 
@@ -13,16 +13,22 @@ context-md/
 ├── translate.py           # 🌍 Translate to English
 ├── aws/                   # AWS utilities
 │   ├── transcriber.py     # Core transcription logic
+│   ├── s3_downloader.py   # S3 audio downloader (shared)
 │   ├── transcript_output/ # Generated transcripts
 │   └── README.md          # AWS documentation
 ├── whisperX/              # 🎤 WhisperX transcription & diarization
 │   ├── main.py            # Main pipeline script
 │   ├── audio_processor.py # Audio preprocessing (mono 16kHz)
 │   ├── whisperx_transcriber.py # WhisperX implementation
-│   ├── s3_downloader.py   # S3 audio downloader
 │   ├── setup.sh           # Installation script
 │   ├── README.md          # WhisperX documentation
 │   └── transcript_output/ # WhisperX output files
+├── meralion_transcriber/ # 🏥 MERaLiON medical transcription pipeline
+│   ├── pipeline.py        # Main clinical pipeline
+│   ├── example_usage.py   # Usage examples
+│   ├── config.py          # Configuration management
+│   └── README.md          # Clinical pipeline documentation
+├── transcript_output/     # 📁 Clinical transcription results
 └── sealion/               # SEA-LION utilities  
     ├── translator.py      # Core translation logic
     └── README.md          # Translation documentation

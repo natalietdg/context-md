@@ -27,7 +27,9 @@ try:
 except ImportError:
     pass
 
-from s3_downloader import S3AudioDownloader
+# Add parent directory to path for aws module
+sys.path.append(str(Path(__file__).parent.parent))
+from aws.s3_downloader import S3AudioDownloader
 from whisperx_transcriber import WhisperXTranscriber
 from audio_processor import AudioProcessor
 
