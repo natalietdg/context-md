@@ -2,46 +2,44 @@ version: 0.2
 
 env:
   variables:
-    NODE_OPTIONS: "--max-old-space-size=1024"
+    NODE_OPTIONS: "--max-old-space-size=2048"
     NPM_CONFIG_MAXSOCKETS: "1"
     NPM_CONFIG_PROGRESS: "false"
     NPM_CONFIG_FUND: "false"
     NPM_CONFIG_AUDIT: "false"
+    NPM_CONFIG_LOGLEVEL: "error"
 
 phases:
   install:
     runtime-versions:
-      nodejs: 18
+      nodejs: 20
     commands:
-      - echo "Installing dependencies with memory optimization..."
+      - echo "Installing backend dependencies..."
       - npm --version
       - node --version
-      - echo "Installing backend dependencies first..."
       - cd backend/api
       - npm ci --no-optional --no-fund --no-audit --prefer-offline || exit 1
       - cd ../..
-      - echo "Installing frontend dependencies..."
-      - cd frontend  
-      - npm ci --no-optional --no-fund --no-audit --prefer-offline || exit 1
-      - cd ..
   
   pre_build:
     commands:
-      - echo "Running pre-build tasks..."
-      - echo "Checking environment variables..."
+      - echo "Running backend tests..."
+      - cd backend/api
       - npm run test || exit 1
+      - cd ../..
       
   build:
     commands:
-      - echo "Building the application..."
+      - echo "Building backend application..."
+      - cd backend/api
       - npm run build || exit 1
       - echo "Verifying build artifacts..."
-      - ls -la backend/api/dist/ || echo "Backend dist folder not found"
-      - ls -la frontend/build/ || echo "Frontend build folder not found"
+      - ls -la dist/ || echo "Backend dist folder not found"
+      - cd ../..
       
   post_build:
     commands:
-      - echo "Build completed successfully"
+      - echo "Backend build completed successfully"
       - echo "Clearing any error flags..."
       - unset CodePipeline_ErrorCode
       - unset CodePipeline_ErrorSummary
@@ -49,13 +47,10 @@ phases:
 artifacts:
   files:
     - 'backend/api/dist/**/*'
-    - 'frontend/build/**/*'
-    - 'package.json'
-    - 'buildspec.yml'
-  name: contextmd-build-$(date +%Y-%m-%d)
+    - 'backend/api/package.json'
+    - 'backend/api/package-lock.json'
+  name: contextmd-backend-$(date +%Y-%m-%d)
 
 cache:
   paths:
-    - node_modules/**/*
-    - frontend/node_modules/**/*
     - backend/api/node_modules/**/*
