@@ -23,7 +23,10 @@ phases:
       - cd backend/api
       - echo "Backend API directory contents:"
       - ls -la
-      - npm ci --no-optional --no-fund --no-audit --prefer-offline
+      - npm install --no-optional --no-fund --no-audit --prefer-offline
+      - echo "Verifying TypeScript installation:"
+      - ls -la node_modules/.bin/ | grep tsc || echo "tsc not found in node_modules/.bin"
+      - npm list typescript || echo "typescript not in package list"
       - cd ../..
   
   pre_build:
