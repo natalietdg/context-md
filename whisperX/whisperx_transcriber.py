@@ -57,9 +57,11 @@ class WhisperXTranscriber:
             cache_dir = os.path.join(os.path.dirname(__file__), "..", "audio_cache")
         self.s3_downloader = S3AudioDownloader(cache_dir=cache_dir)
         
-        # Output directory for transcripts
+        # Output directories for transcripts
         self.output_dir = os.path.join(os.path.dirname(__file__), "transcript_output")
+        self.output_dir_lean = os.path.join(os.path.dirname(__file__), "transcript_output_lean")
         Path(self.output_dir).mkdir(parents=True, exist_ok=True)
+        Path(self.output_dir_lean).mkdir(parents=True, exist_ok=True)
         
         print(f"🚀 WhisperX Transcriber initialized")
         print(f"   Device: {self.device}")
@@ -223,25 +225,129 @@ class WhisperXTranscriber:
         
         return result, os.path.basename(audio_file)
     
+    def extract_clean_format(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Extract clean format from WhisperX results
+        
+        Args:
+            result: WhisperX transcription results
+            
+        Returns:
+            Dictionary in clean format with languages_detected and turns
+        """
+        # Extract unique languages
+        languages = set()
+        
+        # Add main language if available
+        if 'language' in result:
+            languages.add(result['language'])
+        if 'detected_language' in result:
+            languages.add(result['detected_language'])
+        
+        # Process segments to create turns
+        turns = []
+        turn_id = 1
+        current_speaker = None
+        current_text_parts = []
+        
+        # Process segments
+        for segment in result.get('segments', []):
+            segment_text = segment.get('text', '').strip()
+            if not segment_text:
+                continue
+            
+            # Get speaker from words if available
+            segment_speaker = None
+            words = segment.get('words', [])
+            
+            if words:
+                # Find the most common speaker in this segment
+                speaker_counts = {}
+                for word in words:
+                    if 'speaker' in word and word['speaker']:
+                        speaker = word['speaker']
+                        speaker_counts[speaker] = speaker_counts.get(speaker, 0) + 1
+                
+                if speaker_counts:
+                    # Use the most frequent speaker in this segment
+                    segment_speaker = max(speaker_counts.items(), key=lambda x: x[1])[0]
+            
+            # If no speaker detected, use a default
+            if not segment_speaker:
+                segment_speaker = "SPEAKER_UNKNOWN"
+            
+            # Check if this is a new turn (different speaker)
+            if segment_speaker != current_speaker:
+                # Save previous turn if exists
+                if current_speaker is not None and current_text_parts:
+                    turns.append({
+                        "turn_id": turn_id,
+                        "speaker": current_speaker,
+                        "text": " ".join(current_text_parts).strip()
+                    })
+                    turn_id += 1
+                
+                # Start new turn
+                current_speaker = segment_speaker
+                current_text_parts = [segment_text]
+            else:
+                # Same speaker, append to current turn
+                current_text_parts.append(segment_text)
+        
+        # Don't forget the last turn
+        if current_speaker is not None and current_text_parts:
+            turns.append({
+                "turn_id": turn_id,
+                "speaker": current_speaker,
+                "text": " ".join(current_text_parts).strip()
+            })
+        
+        # If we couldn't detect any language from the segments, extract from words
+        if not languages:
+            for segment in result.get('segments', []):
+                for word in segment.get('words', []):
+                    # This is less likely to have language info, but just in case
+                    if 'language' in word:
+                        languages.add(word['language'])
+        
+        # Convert to sorted list for consistent output
+        languages_list = sorted(list(languages)) if languages else ["unknown"]
+        
+        return {
+            "languages_detected": languages_list,
+            "turns": turns
+        }
+    
     def save_results(self, result: Dict[str, Any], base_filename: str):
         """
-        Save transcription results to JSON file in transcript_output directory
+        Save transcription results to both raw and lean JSON formats
         
         Args:
             result: WhisperX transcription results
             base_filename: Base filename for output files
+            
+        Returns:
+            Tuple of (raw_json_file_path, lean_json_file_path)
         """
         # Generate timestamped filename
         timestamp = int(time.time())
         base_name = Path(base_filename).stem
         
-        # Save JSON result (following existing naming convention)
-        json_file = Path(self.output_dir) / f"{base_name}_whisperx_{timestamp}.json"
+        # File paths for both formats
+        raw_json_file = Path(self.output_dir) / f"{base_name}_whisperx_{timestamp}.json"
+        lean_json_file = Path(self.output_dir_lean) / f"{base_name}_lean_{timestamp}.json"
         
         try:
-            with open(json_file, 'w', encoding='utf-8') as f:
+            # Save raw JSON result (existing format)
+            with open(raw_json_file, 'w', encoding='utf-8') as f:
                 json.dump(result, f, indent=2, ensure_ascii=False)
-            print(f"\n💾 Results saved to: {json_file}")
+            print(f"\n💾 Raw results saved to: {raw_json_file}")
+            
+            # Extract and save clean format
+            clean_result = self.extract_clean_format(result)
+            with open(lean_json_file, 'w', encoding='utf-8') as f:
+                json.dump(clean_result, f, indent=2, ensure_ascii=False)
+            print(f"💾 Clean results saved to: {lean_json_file}")
             
             # Print summary
             if 'segments' in result:
@@ -249,113 +355,26 @@ class WhisperXTranscriber:
                 speakers = set()
                 total_text = []
                 
+                # Extract speakers from segments
                 for segment in result['segments']:
-                    if 'speaker' in segment:
-                        speakers.add(segment['speaker'])
+                    words = segment.get('words', [])
+                    for word in words:
+                        if 'speaker' in word and word['speaker']:
+                            speakers.add(word['speaker'])
                     total_text.append(segment.get('text', ''))
                 
-                print(f"📊 Summary:")
+                print(f"\n📊 Summary:")
                 print(f"   Segments: {total_segments}")
                 print(f"   Speakers: {len(speakers)} ({', '.join(sorted(speakers)) if speakers else 'None'})")
                 print(f"   Language: {result.get('language', 'Unknown')}")
+                print(f"   Turns: {len(clean_result['turns'])}")
+                print(f"   Languages detected: {clean_result['languages_detected']}")
                 print(f"   Total text length: {len(' '.join(total_text))} characters")
             
-            return str(json_file)
+            return str(raw_json_file), str(lean_json_file)
             
         except Exception as e:
             print(f"❌ Failed to save results: {e}")
             raise
 
-
-def main():
-    """Command line interface"""
-    import argparse
-    
-    parser = argparse.ArgumentParser(
-        description='Transcribe and diarize audio files using WhisperX with S3 integration'
-    )
-    parser.add_argument(
-        'audio_input',
-        help='Audio file path (local or S3 URI/path)'
-    )
-    parser.add_argument(
-        '--language', '-l',
-        default='auto',
-        help='Language code (auto, en, ms, zh, etc.) - default: auto-detect'
-    )
-    parser.add_argument(
-        '--hf-token',
-        help='HuggingFace token for speaker diarization (or set HF_TOKEN env var)'
-    )
-    parser.add_argument(
-        '--model-size', '-m',
-        choices=['tiny', 'base', 'small', 'medium', 'large-v1', 'large-v2', 'large-v3'],
-        default='large-v2',
-        help='WhisperX model size (default: large-v2)'
-    )
-    parser.add_argument(
-        '--device',
-        choices=['auto', 'cpu', 'cuda'],
-        default='auto',
-        help='Device to use (default: auto)'
-    )
-    parser.add_argument(
-        '--compute-type',
-        choices=['auto', 'float16', 'int8'],
-        default='auto',
-        help='Compute type (default: auto)'
-    )
-    parser.add_argument(
-        '--min-speakers',
-        type=int,
-        help='Minimum number of speakers'
-    )
-    parser.add_argument(
-        '--max-speakers', 
-        type=int,
-        help='Maximum number of speakers'
-    )
-    parser.add_argument(
-        '--cache-dir', '-c',
-        help='Cache directory for downloaded audio files'
-    )
-    
-    args = parser.parse_args()
-    
-    # Get HF token from argument or environment
-    hf_token = args.hf_token or os.getenv('HF_TOKEN')
-    
-    try:
-        # Create transcriber
-        transcriber = WhisperXTranscriber(
-            device=args.device,
-            compute_type=args.compute_type,
-            cache_dir=args.cache_dir
-        )
-        
-        # Process audio
-        result, filename = transcriber.transcribe_and_diarize(
-            audio_input=args.audio_input,
-            language=args.language,
-            hf_token=hf_token,
-            model_size=args.model_size,
-            min_speakers=args.min_speakers,
-            max_speakers=args.max_speakers
-        )
-        
-        # Save results
-        output_file = transcriber.save_results(result, filename)
-        
-        print(f"\n🎉 Transcription completed successfully!")
-        print(f"📄 Results saved to: {output_file}")
-        
-    except KeyboardInterrupt:
-        print("\n⏹️ Processing interrupted by user")
-        sys.exit(1)
-    except Exception as e:
-        print(f"\n❌ Processing failed: {e}")
-        sys.exit(1)
-
-
-if __name__ == '__main__':
-    main() 
+ 

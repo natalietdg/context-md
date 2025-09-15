@@ -1,9 +1,0 @@
-[SPEAKER_01]:  The pain does change when I stand up.
-[SPEAKER_01]: When I stand up, it feels less of a sharp pain only when I'm sitting down.
-[SPEAKER_00]: Okay, that's good to know.
-[SPEAKER_00]: It could be related to your posture while sitting.
-[SPEAKER_00]: Perhaps try adjusting your chair or adding some lumbar support.
-[SPEAKER_00]: Does that make any difference?
-[SPEAKER_01]: No, I don't think so because my chair is a bit too soft.
-[SPEAKER_00]:  Yes, a soft chair might not provide enough support, especially for your back.
-[SPEAKER_00]: That could definitely contribute to the pain, perhaps try a firmer chair or add a cushion for better support.
