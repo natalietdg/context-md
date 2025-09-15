@@ -7,10 +7,10 @@ import { json as bodyJson, urlencoded } from 'express';
 
 dotenv.config();
 
-const ALLOWED_ORIGINS = new Set<string>([
-  'https://contextmd.netlify.app',
-  'http://localhost:3000',
-]);
+// const ALLOWED_ORIGINS = new Set<string>([
+//   'https://contextmd.netlify.app',
+//   'http://localhost:3000',
+// ]);
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
@@ -22,7 +22,7 @@ async function bootstrap() {
   app.enableCors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-      if (ALLOWED_ORIGINS.has(origin)) return callback(null, true);
+      // if (ALLOWED_ORIGINS.has(origin)) return callback(null, true);
       // default allow the production site
       if (origin === 'https://contextmd.netlify.app') return callback(null, true);
       return callback(new Error('Not allowed by CORS'));
