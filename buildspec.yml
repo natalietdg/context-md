@@ -25,24 +25,22 @@ phases:
     commands:
       - echo "Running backend tests..."
       - cd backend/api
-      - npm run test || exit 1
+      - npm run test
       - cd ../..
       
   build:
     commands:
       - echo "Building backend application..."
       - cd backend/api
-      - npm run build || exit 1
+      - npm run build
       - echo "Verifying build artifacts..."
-      - ls -la dist/ || echo "Backend dist folder not found"
+      - ls -la dist/
+      - echo "Build verification complete"
       - cd ../..
       
   post_build:
     commands:
       - echo "Backend build completed successfully"
-      - echo "Clearing any error flags..."
-      - unset CodePipeline_ErrorCode
-      - unset CodePipeline_ErrorSummary
 
 artifacts:
   files:
