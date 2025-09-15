@@ -1,0 +1,31 @@
+{
+    "languages_detected": ["en"],
+    "turns": [
+      {
+        "turn_id": 1,
+        "speaker": "SPEAKER_01",
+        "text": "I've been wheezing a lot lately. I usually use my Ventolin inhaler, but it doesn't seem to be helping as much."
+      },
+      {
+        "turn_id": 2,
+        "speaker": "SPEAKER_00",
+        "text": "Do you also use any preventer inhalers, like Symbicort or Seretide?"
+      },
+      {
+        "turn_id": 3,
+        "speaker": "SPEAKER_01",
+        "text": "No, just Ventolin. I was diagnosed with asthma when I was 12."
+      },
+      {
+        "turn_id": 4,
+        "speaker": "SPEAKER_00",
+        "text": "Do you have any allergies, such as to aspirin or dust mites?"
+      },
+      {
+        "turn_id": 5,
+        "speaker": "SPEAKER_01",
+        "text": "Yes, I get rashes if I take aspirin."
+      }
+    ]
+  }
+  

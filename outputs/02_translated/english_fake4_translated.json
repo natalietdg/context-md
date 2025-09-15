@@ -1,0 +1,31 @@
+{
+    "languages_detected": ["en"],
+    "turns": [
+      {
+        "turn_id": 1,
+        "speaker": "SPEAKER_01",
+        "text": "I’ve been taking Lipitor for my cholesterol for the last 3 months."
+      },
+      {
+        "turn_id": 2,
+        "speaker": "SPEAKER_00",
+        "text": "Have you noticed any side effects, like muscle pain or fatigue?"
+      },
+      {
+        "turn_id": 3,
+        "speaker": "SPEAKER_01",
+        "text": "Yes, some muscle aches, but I’m not sure if it’s from exercise."
+      },
+      {
+        "turn_id": 4,
+        "speaker": "SPEAKER_00",
+        "text": "Any drug allergies?"
+      },
+      {
+        "turn_id": 5,
+        "speaker": "SPEAKER_01",
+        "text": "Yes, I get hives if I take Zyrtec."
+      }
+    ]
+  }
+  

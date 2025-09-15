@@ -1,0 +1,31 @@
+{
+    "languages_detected": ["en"],
+    "turns": [
+      {
+        "turn_id": 1,
+        "speaker": "SPEAKER_01",
+        "text": "Doctor, I usually take Panadol when I have migraines, but recently the pain hasn't improved."
+      },
+      {
+        "turn_id": 2,
+        "speaker": "SPEAKER_00",
+        "text": "How long has the headache been lasting each time?"
+      },
+      {
+        "turn_id": 3,
+        "speaker": "SPEAKER_01",
+        "text": "It lasts for around 6 hours, sometimes longer, for the past two weeks."
+      },
+      {
+        "turn_id": 4,
+        "speaker": "SPEAKER_00",
+        "text": "Any nausea, vision changes, or dizziness?"
+      },
+      {
+        "turn_id": 5,
+        "speaker": "SPEAKER_01",
+        "text": "Yes, nausea but no dizziness or blurred vision."
+      }
+    ]
+  }
+  

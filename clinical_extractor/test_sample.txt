@@ -1,0 +1,6 @@
+Patient: I've had chest pain for 2 days, worse on exertion, no fever or cough.
+Doctor: Any allergies?
+Patient: I'm allergic to penicillin.
+Doctor: Current meds?
+Patient: Amlodipine at night.
+Doctor: Likely diagnosis: stable angina. I'll prescribe nitroglycerin 0.4 mg sublingual PRN chest pain, review in one week. If chest pain at rest or severe breathlessness, go to ER immediately. 

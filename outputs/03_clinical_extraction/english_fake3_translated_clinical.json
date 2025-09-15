@@ -1,0 +1,32 @@
+{
+  "chief_complaint": "SPEAKER_01: I've been wheezing a lot lately",
+  "symptoms_present": [
+    "wheezing",
+    "asthma",
+    "dust mit",
+    "rash"
+  ],
+  "symptoms_negated": [],
+  "onset_or_duration": null,
+  "allergy_substance": [
+    "s"
+  ],
+  "meds_current": [
+    "vent",
+    "symbicort",
+    "seretide",
+    "aspi",
+    "aspirin"
+  ],
+  "conditions_past": [],
+  "primary_diagnosis": "asthma when i was 12",
+  "rx_drug": "aspirin",
+  "rx_dose": null,
+  "follow_up": null,
+  "red_flags": [],
+  "_metadata": {
+    "source_file": "english_fake3_translated.json",
+    "processed_timestamp": null,
+    "original_text_length": 398
+  }
+}
