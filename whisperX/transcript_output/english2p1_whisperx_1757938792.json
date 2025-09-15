@@ -2,8 +2,8 @@
   "segments": [
     {
       "start": 0.031,
-      "end": 7.362,
-      "text": " The pain does change when I stand up when I stand up it feels less of a sharp pain with only when I'm sitting down.",
+      "end": 2.956,
+      "text": " The pain does change when I stand up.",
       "words": [
         {
           "word": "The",
@@ -48,13 +48,21 @@
           "score": 0.956
         },
         {
-          "word": "up",
+          "word": "up.",
           "start": 2.855,
-          "end": 2.936,
-          "score": 0.986
-        },
+          "end": 2.956,
+          "score": 0.952
+        }
+      ],
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 3.056,
+      "end": 5.86,
+      "text": "When I stand up, it feels less of a sharp pain.",
+      "words": [
         {
-          "word": "when",
+          "word": "When",
           "start": 3.056,
           "end": 3.176,
           "score": 0.436
@@ -72,10 +80,10 @@
           "score": 0.695
         },
         {
-          "word": "up",
+          "word": "up,",
           "start": 3.597,
-          "end": 3.677,
-          "score": 0.702
+          "end": 3.797,
+          "score": 0.645
         },
         {
           "word": "it",
@@ -114,16 +122,30 @@
           "score": 0.76
         },
         {
-          "word": "pain",
+          "word": "pain.",
           "start": 5.62,
-          "end": 5.84,
-          "score": 0.846
+          "end": 5.86,
+          "score": 0.835
+        }
+      ],
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 5.88,
+      "end": 7.362,
+      "text": "It was only when I'm sitting down.",
+      "words": [
+        {
+          "word": "It",
+          "start": 5.88,
+          "end": 5.92,
+          "score": 0.728
         },
         {
-          "word": "with",
-          "start": 5.86,
-          "end": 5.94,
-          "score": 0.418
+          "word": "was",
+          "start": 5.98,
+          "end": 6.08,
+          "score": 0.881
         },
         {
           "word": "only",
@@ -155,7 +177,8 @@
           "end": 7.362,
           "score": 0.833
         }
-      ]
+      ],
+      "speaker": "SPEAKER_01"
     },
     {
       "start": 10.467,
@@ -192,7 +215,8 @@
           "end": 11.409,
           "score": 0.784
         }
-      ]
+      ],
+      "speaker": "SPEAKER_00"
     },
     {
       "start": 12.01,
@@ -253,7 +277,8 @@
           "end": 13.812,
           "score": 0.975
         }
-      ]
+      ],
+      "speaker": "SPEAKER_00"
     },
     {
       "start": 14.333,
@@ -320,7 +345,8 @@
           "end": 18.299,
           "score": 0.862
         }
-      ]
+      ],
+      "speaker": "SPEAKER_00"
     },
     {
       "start": 18.319,
@@ -357,7 +383,8 @@
           "end": 20.743,
           "score": 0.889
         }
-      ]
+      ],
+      "speaker": "SPEAKER_00"
     },
     {
       "start": 20.763,
@@ -442,7 +469,8 @@
           "end": 25.11,
           "score": 0.782
         }
-      ]
+      ],
+      "speaker": "SPEAKER_01"
     },
     {
       "start": 28.988,
@@ -527,12 +555,13 @@
           "end": 32.94,
           "score": 0.712
         }
-      ]
+      ],
+      "speaker": "SPEAKER_00"
     },
     {
       "start": 32.96,
-      "end": 38.155,
-      "text": "That could definitely contribute to the pain, perhaps try a firmer chair, or add a cushion for better support.",
+      "end": 34.645,
+      "text": "That could definitely contribute to the pain.",
       "words": [
         {
           "word": "That",
@@ -571,13 +600,21 @@
           "score": 0.83
         },
         {
-          "word": "pain,",
+          "word": "pain.",
           "start": 34.404,
           "end": 34.645,
           "score": 0.94
-        },
+        }
+      ],
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 34.926,
+      "end": 38.155,
+      "text": "Perhaps try a firmer chair or add a cushion for better support.",
+      "words": [
         {
-          "word": "perhaps",
+          "word": "Perhaps",
           "start": 34.926,
           "end": 35.206,
           "score": 0.708
@@ -601,10 +638,10 @@
           "score": 0.814
         },
         {
-          "word": "chair,",
+          "word": "chair",
           "start": 35.908,
           "end": 36.149,
-          "score": 0.864
+          "score": 0.777
         },
         {
           "word": "or",
@@ -648,7 +685,8 @@
           "end": 38.155,
           "score": 0.943
         }
-      ]
+      ],
+      "speaker": "SPEAKER_00"
     }
   ],
   "language": "en",

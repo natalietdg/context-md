@@ -23,6 +23,9 @@ python aws/transcriber.py path/to/audio.m4a
 
 # As module
 python -m aws.transcriber path/to/audio.m4a
+
+# get list of audio files in bucket 
+aws s3 ls s3://transcribe-audio-b1/
 ```
 
 

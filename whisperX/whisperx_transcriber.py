@@ -1,413 +1,297 @@
 #!/usr/bin/env python3
 """
 WhisperX Transcriber
-
-Transcribes and diarizes audio files using WhisperX.
-Supports English, Malay, and Chinese languages with speaker diarization.
+Transcribes and diarizes audio files using WhisperX with S3 integration.
+Based on standard WhisperX workflow with speaker diarization.
 """
 
 import os
 import sys
 import json
 import time
+import gc
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
+
+# Add parent directory to path to import s3_downloader
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from aws.s3_downloader import S3AudioDownloader
 
 # Optional .env support - load from project root
 try:
     from dotenv import load_dotenv
-    import os
-    # Find project root (parent of whisperX folder)
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    env_path = os.path.join(project_root, '.env')
+    project_root = Path(__file__).parent.parent
+    env_path = project_root / '.env'
     load_dotenv(env_path)
 except ImportError:
     pass
 
-from audio_processor import AudioProcessor
+try:
+    import whisperx
+    import torch
+    print("✅ WhisperX and PyTorch loaded successfully")
+except ImportError as e:
+    print(f"❌ Required libraries not found: {e}")
+    print("Please install with: pip install git+https://github.com/m-bain/whisperx.git torch")
+    sys.exit(1)
 
 
 class WhisperXTranscriber:
-    """WhisperX transcriber with diarization support"""
+    """WhisperX transcriber with S3 integration and speaker diarization"""
     
-    SUPPORTED_LANGUAGES = {
-        'auto': None,  # Automatic detection
-        'en': 'en',    # English
-        'ms': 'ms',    # Malay 
-        'zh': 'zh'     # Chinese
-    }
-    
-    def __init__(self, device: str = "auto", compute_type: str = "auto"):
-        """Initialize WhisperX transcriber"""
-        self.device = self._get_device(device)
-        self.compute_type = self._get_compute_type(compute_type, self.device)
-        self.model = None
-        self.align_model = None
-        self.diarize_model = None
-        self.audio_processor = AudioProcessor()
+    def __init__(self, device: str = "auto", compute_type: str = "auto", cache_dir: str = None):
+        """
+        Initialize WhisperX transcriber
         
-        print(f"🚀 Initializing WhisperX transcriber on device: {self.device}")
-        self._load_whisperx()
+        Args:
+            device: Device to use ('auto', 'cpu', 'cuda')
+            compute_type: Compute type ('auto', 'float16', 'int8')
+            cache_dir: Directory for caching downloaded audio files
+        """
+        self.device = self._get_device(device)
+        self.compute_type = self._get_compute_type(compute_type)
+        self.batch_size = 16  # Default batch size
+        
+        # Initialize S3 downloader
+        if cache_dir is None:
+            cache_dir = os.path.join(os.path.dirname(__file__), "..", "audio_cache")
+        self.s3_downloader = S3AudioDownloader(cache_dir=cache_dir)
+        
+        # Output directory for transcripts
+        self.output_dir = os.path.join(os.path.dirname(__file__), "transcript_output")
+        Path(self.output_dir).mkdir(parents=True, exist_ok=True)
+        
+        print(f"🚀 WhisperX Transcriber initialized")
+        print(f"   Device: {self.device}")
+        print(f"   Compute type: {self.compute_type}")
+        print(f"   Cache directory: {cache_dir}")
+        print(f"   Output directory: {self.output_dir}")
     
     def _get_device(self, device: str) -> str:
         """Determine the best device to use"""
         if device != "auto":
             return device
         
-        try:
-            import torch
-            if torch.cuda.is_available():
-                return "cuda"
-        except ImportError:
-            pass
-        
-        return "cpu"
+        if torch.cuda.is_available():
+            print("🔥 CUDA available, using GPU")
+            return "cuda"
+        else:
+            print("💻 Using CPU")
+            return "cpu"
     
-    def _get_compute_type(self, compute_type: str, device: str) -> str:
-        """Determine the best compute type for the device"""
+    def _get_compute_type(self, compute_type: str) -> str:
+        """Determine the best compute type"""
         if compute_type != "auto":
             return compute_type
         
-        # Auto-select based on device
-        if device == "cuda":
+        if self.device == "cuda":
             return "float16"  # GPU supports float16
         else:
             return "int8"     # CPU works better with int8
     
-    def _load_whisperx(self):
-        """Load WhisperX library"""
-        try:
-            global whisperx
-            import whisperx
-            print("✅ WhisperX library loaded successfully")
-        except ImportError as e:
-            print("❌ WhisperX not found. Please install it with:")
-            print("   pip install git+https://github.com/m-bain/whisperx.git")
-            sys.exit(1)
-    
-    def load_model(self, model_size: str = "base"):
-        """Load WhisperX model"""
-        try:
-            print(f"📦 Loading WhisperX model: {model_size}")
-            self.model = whisperx.load_model(
-                model_size, 
-                device=self.device, 
-                compute_type=self.compute_type
-            )
-            print("✅ WhisperX model loaded successfully")
-        except Exception as e:
-            print(f"❌ Failed to load WhisperX model: {e}")
-            sys.exit(1)
-    
-    def load_alignment_model(self, language: str):
-        """Load alignment model for precise word-level timestamps"""
-        try:
-            print(f"📦 Loading alignment model for language: {language}")
-            self.align_model, self.metadata = whisperx.load_align_model(
-                language_code=language, 
-                device=self.device
-            )
-            print("✅ Alignment model loaded successfully")
-        except Exception as e:
-            print(f"⚠️  Could not load alignment model: {e}")
-            self.align_model = None
-            self.metadata = None
-    
-    def load_diarization_model(self, hf_token: Optional[str] = None):
-        """Load speaker diarization model"""
-        try:
-            # Check for HuggingFace token
-            token = hf_token or os.getenv('HF_TOKEN')
-            if not token:
-                print("⚠️  No HuggingFace token found. Speaker diarization will be skipped.")
-                print("   Set HF_TOKEN environment variable or pass --hf-token argument")
-                return
-            
-            print("📦 Loading speaker diarization model")
-            from pyannote.audio import Pipeline
-            self.diarize_model = Pipeline.from_pretrained(
-                "pyannote/speaker-diarization-3.1", 
-                use_auth_token=token
-            )
-            # Move to correct device
-            if self.device == "cuda":
-                import torch
-                self.diarize_model.to(torch.device("cuda"))
-            print("✅ Diarization model loaded successfully")
-        except Exception as e:
-            print(f"⚠️  Could not load diarization model: {e}")
-            print("   Make sure to accept the license at: https://hf.co/pyannote/speaker-diarization-3.1")
-            self.diarize_model = None
-    
-    def transcribe_audio(self, audio_path: str, language: str = "auto", 
-                        batch_size: int = 16) -> Dict[str, Any]:
-        """Transcribe audio file"""
-        if not self.model:
-            print("❌ Model not loaded. Call load_model() first.")
-            return {}
+    def _get_audio_path(self, audio_input: str) -> str:
+        """
+        Get local audio file path, downloading from S3 if necessary
         
-        try:
-            # Preprocess audio to optimal format (mono 16kHz WAV)
-            processed_audio_path = self.audio_processor.preprocess_for_whisperx(audio_path)
+        Args:
+            audio_input: Local file path or S3 URI/path
             
-            print(f"🎵 Loading processed audio: {processed_audio_path}")
-            audio = whisperx.load_audio(processed_audio_path)
-            
-            print("🗣️  Transcribing audio...")
-            if language == "auto":
-                result = self.model.transcribe(audio, batch_size=batch_size)
-                detected_language = result.get("language", "en")
-                print(f"🌍 Detected language: {detected_language}")
-            else:
-                result = self.model.transcribe(
-                    audio, 
-                    batch_size=batch_size,
-                    language=language
-                )
-                detected_language = language
-            
-            print("✅ Transcription completed")
-            return result, detected_language, processed_audio_path
-            
-        except Exception as e:
-            print(f"❌ Transcription failed: {e}")
-            return {}, "en", audio_path
-    
-    def align_transcript(self, segments: List[Dict], audio_path: str, language: str):
-        """Align transcript for word-level timestamps"""
-        if not self.align_model:
-            print("⚠️  Alignment model not loaded, skipping alignment")
-            return segments
+        Returns:
+            Local file path to audio file
+        """
+        # Check if it's a local file that exists
+        if os.path.exists(audio_input):
+            print(f"📁 Using local file: {audio_input}")
+            return audio_input
         
+        # Assume it's an S3 path/URI and download it
+        print(f"☁️ Downloading from S3: {audio_input}")
         try:
-            print("⏰ Aligning transcript for word-level timestamps...")
-            audio = whisperx.load_audio(audio_path)
-            result = whisperx.align(
-                segments, 
-                self.align_model, 
-                self.metadata, 
-                audio, 
-                self.device, 
-                return_char_alignments=False
-            )
+            local_path = self.s3_downloader.download_audio_file(audio_input)
+            print(f"✅ Downloaded to: {local_path}")
+            return local_path
+        except Exception as e:
+            print(f"❌ Failed to download audio file: {e}")
+            raise
+    
+    def transcribe_and_diarize(self, audio_input: str, language: str = "auto", 
+                              hf_token: Optional[str] = None, model_size: str = "large-v2", 
+                              min_speakers: Optional[int] = None, max_speakers: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Main transcription and diarization pipeline following the provided WhisperX code structure
+        
+        Args:
+            audio_input: Local audio file path or S3 URI/path
+            language: Language code ('auto', 'en', 'ms', 'zh', etc.) or 'auto' for detection
+            hf_token: HuggingFace token for speaker diarization (YOUR_HF_TOKEN)
+            model_size: WhisperX model size (default: large-v2)
+            min_speakers: Minimum number of speakers (optional)
+            max_speakers: Maximum number of speakers (optional)
+            
+        Returns:
+            Dictionary containing transcription results with speaker labels
+        """
+        
+        # Get local audio file path
+        audio_file = self._get_audio_path(audio_input)
+        
+        print(f"\n🎵 Processing audio: {audio_file}")
+        print(f"🤖 Model: {model_size}")
+        print(f"🌍 Language: {language}")
+        print(f"⚙️ Device: {self.device}, Compute type: {self.compute_type}")
+        
+        # 1. Transcribe with original whisper (batched)
+        print("\n📝 Step 1: Loading WhisperX model and transcribing...")
+        model = whisperx.load_model(model_size, self.device, compute_type=self.compute_type)
+        
+        audio = whisperx.load_audio(audio_file)
+        
+        # Transcribe with language specification
+        if language == "auto":
+            result = model.transcribe(audio, batch_size=self.batch_size)
+            detected_language = result.get("language", "en")
+            print("✅ Initial transcription completed (auto-detect)")
+            print(f"🌍 Detected language: {detected_language}")
+        else:
+            result = model.transcribe(audio, batch_size=self.batch_size, language=language)
+            detected_language = language
+            print("✅ Initial transcription completed")
+            print(f"🌍 Using specified language: {detected_language}")
+        
+        # Optional: delete model if low on GPU resources
+        if self.device == "cuda":
+            del model
+            gc.collect()
+            torch.cuda.empty_cache()
+        
+        # 2. Align whisper output
+        print("\n⏰ Step 2: Loading alignment model and aligning...")
+        try:
+            model_a, metadata = whisperx.load_align_model(language_code=detected_language, device=self.device)
+            result = whisperx.align(result["segments"], model_a, metadata, audio, self.device, return_char_alignments=False)
             print("✅ Alignment completed")
-            return result["segments"]
-        except Exception as e:
-            print(f"⚠️  Alignment failed: {e}")
-            return segments
-    
-    def diarize_speakers(self, audio_path: str, min_speakers: int = 1, 
-                        max_speakers: int = 10) -> Optional[Dict]:
-        """Perform speaker diarization"""
-        if not self.diarize_model:
-            print("⚠️  Diarization model not loaded, skipping speaker diarization")
-            return None
-        
-        try:
-            print("👥 Performing speaker diarization...")
-            # Use pyannote.audio pipeline directly
-            diarize_segments = self.diarize_model(
-                audio_path,
-                min_speakers=min_speakers,
-                max_speakers=max_speakers
-            )
-            print("✅ Speaker diarization completed")
-            return diarize_segments
-        except Exception as e:
-            print(f"⚠️  Speaker diarization failed: {e}")
-            return None
-    
-    def assign_speakers(self, segments: List[Dict], diarize_segments):
-        """Assign speakers to transcript segments"""
-        if not diarize_segments:
-            return segments
-        
-        try:
-            print("🏷️  Assigning speakers to transcript...")
             
-            # Try WhisperX API first
+            # Optional: delete alignment model if low on GPU resources  
+            if self.device == "cuda":
+                del model_a
+                gc.collect()
+                torch.cuda.empty_cache()
+                
+        except Exception as e:
+            print(f"⚠️ Alignment failed: {e}")
+            print("Continuing without alignment...")
+        
+        # 3. Assign speaker labels
+        if hf_token:
+            print("\n👥 Step 3: Loading diarization model and assigning speakers...")
             try:
-                result = whisperx.assign_word_speakers(diarize_segments, segments)
-                if result and "segments" in result:
-                    print("✅ Speaker assignment completed (WhisperX API)")
-                    return result["segments"]
+                diarize_model = whisperx.diarize.DiarizationPipeline(use_auth_token=hf_token, device=self.device)
+                
+                # Add min/max number of speakers if known
+                diarize_kwargs = {}
+                if min_speakers is not None:
+                    diarize_kwargs['min_speakers'] = min_speakers
+                if max_speakers is not None:
+                    diarize_kwargs['max_speakers'] = max_speakers
+                
+                diarize_segments = diarize_model(audio, **diarize_kwargs)
+                
+                result = whisperx.assign_word_speakers(diarize_segments, result)
+                print("✅ Speaker diarization completed")
+                
+                # Print diarization info
+                print("\n📊 Diarization Results:")
+                speakers = set()
+                for segment in result.get("segments", []):
+                    if "speaker" in segment:
+                        speakers.add(segment["speaker"])
+                print(f"   Found {len(speakers)} speakers: {', '.join(sorted(speakers))}")
+                
             except Exception as e:
-                print(f"   WhisperX API failed: {e}")
-            
-            # Fall back to manual assignment
-            print("   Using manual speaker assignment...")
-            return self._manual_assign_speakers(segments, diarize_segments)
-            
-        except Exception as e:
-            print(f"⚠️  Speaker assignment failed: {e}")
-            print("   Continuing without speaker labels...")
-            return segments
-    
-    def _manual_assign_speakers(self, segments: List[Dict], diarize_segments):
-        """Manually assign speakers based on timestamp overlap"""
-        try:
-            # Extract speaker timeline from diarization
-            speaker_timeline = []
-            if hasattr(diarize_segments, 'itertracks'):
-                for turn, _, speaker in diarize_segments.itertracks(yield_label=True):
-                    speaker_timeline.append({
-                        'start': float(turn.start),
-                        'end': float(turn.end),
-                        'speaker': str(speaker)
-                    })
-            
-            print(f"   Found {len(speaker_timeline)} speaker segments")
-            
-            # Assign speakers to transcript segments
-            for segment in segments:
-                segment_start = segment.get('start', 0)
-                segment_end = segment.get('end', segment_start)
-                
-                # Find overlapping speaker
-                best_speaker = None
-                best_overlap = 0
-                
-                for speaker_seg in speaker_timeline:
-                    # Calculate overlap
-                    overlap_start = max(segment_start, speaker_seg['start'])
-                    overlap_end = min(segment_end, speaker_seg['end'])
-                    overlap = max(0, overlap_end - overlap_start)
-                    
-                    if overlap > best_overlap:
-                        best_overlap = overlap
-                        best_speaker = speaker_seg['speaker']
-                
-                # Assign speaker if found
-                if best_speaker:
-                    segment['speaker'] = best_speaker
-            
-            speakers_found = set(seg.get('speaker') for seg in segments if seg.get('speaker'))
-            print(f"   Assigned speakers: {', '.join(speakers_found) if speakers_found else 'None'}")
-            print("✅ Manual speaker assignment completed")
-            
-            return segments
-            
-        except Exception as e:
-            print(f"   Manual assignment failed: {e}")
-            return segments
-    
-    def save_results(self, result: Dict, audio_path: str, output_dir: str):
-        """Save transcription results"""
-        # Create output directory
-        output_path = Path(output_dir)
-        output_path.mkdir(parents=True, exist_ok=True)
+                print(f"⚠️ Speaker diarization failed: {e}")
+                print("Continuing without speaker labels...")
+                print("Make sure to:")
+                print("  1. Set valid HuggingFace token")
+                print("  2. Accept license at: https://hf.co/pyannote/speaker-diarization-3.1")
+        else:
+            print("\n⚠️ No HuggingFace token provided, skipping speaker diarization")
+            print("Set HF_TOKEN environment variable or pass --hf-token to enable diarization")
         
-        # Generate base filename
-        base_name = Path(audio_path).stem
-        timestamp = int(time.time())
-        
-        # Save JSON result
-        json_file = output_path / f"{base_name}_whisperx_{timestamp}.json"
-        with open(json_file, 'w', encoding='utf-8') as f:
-            json.dump(result, f, indent=2, ensure_ascii=False)
-        print(f"💾 Saved full result: {json_file}")
-        
-        # Save plain text transcript
-        txt_file = output_path / f"{base_name}_transcript_{timestamp}.txt"
-        with open(txt_file, 'w', encoding='utf-8') as f:
-            if 'segments' in result:
-                for segment in result['segments']:
-                    if 'speaker' in segment:
-                        f.write(f"[{segment['speaker']}]: {segment['text']}\n")
-                    else:
-                        f.write(f"{segment['text']}\n")
-            else:
-                f.write(result.get('text', ''))
-        print(f"💾 Saved transcript: {txt_file}")
-        
-        # Save speaker-separated transcript if speakers detected
-        if 'segments' in result and any('speaker' in seg for seg in result['segments']):
-            speakers_file = output_path / f"{base_name}_speakers_{timestamp}.txt"
-            with open(speakers_file, 'w', encoding='utf-8') as f:
-                current_speaker = None
-                for segment in result['segments']:
-                    speaker = segment.get('speaker', 'Unknown')
-                    if speaker != current_speaker:
-                        f.write(f"\n--- Speaker {speaker} ---\n")
-                        current_speaker = speaker
-                    f.write(f"{segment['text']}\n")
-            print(f"💾 Saved speaker-separated transcript: {speakers_file}")
-    
-    def process_audio_file(self, audio_path: str, language: str = "auto",
-                          model_size: str = "base", enable_diarization: bool = True,
-                          min_speakers: int = 1, max_speakers: int = 10,
-                          batch_size: int = 16, hf_token: Optional[str] = None,
-                          output_dir: Optional[str] = None) -> Dict[str, Any]:
-        """Main method to process audio file with WhisperX"""
-        
-        print(f"🎵 Processing audio file: {audio_path}")
-        print(f"📝 Language: {language}")
-        print(f"🎯 Model size: {model_size}")
-        print(f"👥 Diarization enabled: {enable_diarization}")
-        
-        # Set default output directory
-        if not output_dir:
-            output_dir = os.path.join(os.path.dirname(__file__), "transcript_output")
-        
-        # Load main model
-        self.load_model(model_size)
-        
-        # Transcribe audio
-        result, detected_language, processed_audio_path = self.transcribe_audio(
-            audio_path, language, batch_size
-        )
-        
-        if not result or 'segments' not in result:
-            print("❌ No transcription results obtained")
-            return {}
-        
-        segments = result['segments']
-        
-        # Load alignment model and align transcript
-        self.load_alignment_model(detected_language)
-        segments = self.align_transcript(segments, processed_audio_path, detected_language)
-        
-        # Perform speaker diarization if enabled
-        if enable_diarization:
-            self.load_diarization_model(hf_token)
-            diarize_segments = self.diarize_speakers(
-                processed_audio_path, min_speakers, max_speakers
-            )
-            segments = self.assign_speakers(segments, diarize_segments)
-        
-        # Update result with processed segments
-        result['segments'] = segments
+        # Update result with language info
+        result['language'] = detected_language
         result['detected_language'] = detected_language
         
-        # Save results
-        self.save_results(result, audio_path, output_dir)
+        return result, os.path.basename(audio_file)
+    
+    def save_results(self, result: Dict[str, Any], base_filename: str):
+        """
+        Save transcription results to JSON file in transcript_output directory
         
-        print("🎉 Audio processing completed!")
-        return result
+        Args:
+            result: WhisperX transcription results
+            base_filename: Base filename for output files
+        """
+        # Generate timestamped filename
+        timestamp = int(time.time())
+        base_name = Path(base_filename).stem
+        
+        # Save JSON result (following existing naming convention)
+        json_file = Path(self.output_dir) / f"{base_name}_whisperx_{timestamp}.json"
+        
+        try:
+            with open(json_file, 'w', encoding='utf-8') as f:
+                json.dump(result, f, indent=2, ensure_ascii=False)
+            print(f"\n💾 Results saved to: {json_file}")
+            
+            # Print summary
+            if 'segments' in result:
+                total_segments = len(result['segments'])
+                speakers = set()
+                total_text = []
+                
+                for segment in result['segments']:
+                    if 'speaker' in segment:
+                        speakers.add(segment['speaker'])
+                    total_text.append(segment.get('text', ''))
+                
+                print(f"📊 Summary:")
+                print(f"   Segments: {total_segments}")
+                print(f"   Speakers: {len(speakers)} ({', '.join(sorted(speakers)) if speakers else 'None'})")
+                print(f"   Language: {result.get('language', 'Unknown')}")
+                print(f"   Total text length: {len(' '.join(total_text))} characters")
+            
+            return str(json_file)
+            
+        except Exception as e:
+            print(f"❌ Failed to save results: {e}")
+            raise
 
 
 def main():
-    """Main entry point for command line usage"""
+    """Command line interface"""
     import argparse
     
     parser = argparse.ArgumentParser(
-        description='Transcribe and diarize audio files using WhisperX'
+        description='Transcribe and diarize audio files using WhisperX with S3 integration'
     )
     parser.add_argument(
-        'audio_path',
-        help='Path to audio file or S3 URI'
+        'audio_input',
+        help='Audio file path (local or S3 URI/path)'
     )
     parser.add_argument(
         '--language', '-l',
-        choices=['auto', 'en', 'ms', 'zh'],
         default='auto',
-        help='Audio language (default: auto-detect)'
+        help='Language code (auto, en, ms, zh, etc.) - default: auto-detect'
+    )
+    parser.add_argument(
+        '--hf-token',
+        help='HuggingFace token for speaker diarization (or set HF_TOKEN env var)'
     )
     parser.add_argument(
         '--model-size', '-m',
         choices=['tiny', 'base', 'small', 'medium', 'large-v1', 'large-v2', 'large-v3'],
-        default='base',
-        help='WhisperX model size (default: base)'
+        default='large-v2',
+        help='WhisperX model size (default: large-v2)'
     )
     parser.add_argument(
         '--device',
@@ -416,57 +300,61 @@ def main():
         help='Device to use (default: auto)'
     )
     parser.add_argument(
-        '--disable-diarization',
-        action='store_true',
-        help='Disable speaker diarization'
+        '--compute-type',
+        choices=['auto', 'float16', 'int8'],
+        default='auto',
+        help='Compute type (default: auto)'
     )
     parser.add_argument(
         '--min-speakers',
         type=int,
-        default=1,
-        help='Minimum number of speakers (default: 1)'
+        help='Minimum number of speakers'
     )
     parser.add_argument(
-        '--max-speakers',
+        '--max-speakers', 
         type=int,
-        default=10,
-        help='Maximum number of speakers (default: 10)'
+        help='Maximum number of speakers'
     )
     parser.add_argument(
-        '--batch-size',
-        type=int,
-        default=16,
-        help='Batch size for processing (default: 16)'
-    )
-    parser.add_argument(
-        '--hf-token',
-        help='HuggingFace token for diarization model'
-    )
-    parser.add_argument(
-        '--output-dir', '-o',
-        help='Output directory for results'
+        '--cache-dir', '-c',
+        help='Cache directory for downloaded audio files'
     )
     
     args = parser.parse_args()
     
-    # Create transcriber
-    transcriber = WhisperXTranscriber(
-        device=args.device,
-        compute_type="float16"
-    )
+    # Get HF token from argument or environment
+    hf_token = args.hf_token or os.getenv('HF_TOKEN')
     
-    # Process audio file
-    transcriber.process_audio_file(
-        audio_path=args.audio_path,
-        language=args.language,
-        model_size=args.model_size,
-        enable_diarization=not args.disable_diarization,
-        min_speakers=args.min_speakers,
-        max_speakers=args.max_speakers,
-        batch_size=args.batch_size,
-        hf_token=args.hf_token,
-        output_dir=args.output_dir
-    )
+    try:
+        # Create transcriber
+        transcriber = WhisperXTranscriber(
+            device=args.device,
+            compute_type=args.compute_type,
+            cache_dir=args.cache_dir
+        )
+        
+        # Process audio
+        result, filename = transcriber.transcribe_and_diarize(
+            audio_input=args.audio_input,
+            language=args.language,
+            hf_token=hf_token,
+            model_size=args.model_size,
+            min_speakers=args.min_speakers,
+            max_speakers=args.max_speakers
+        )
+        
+        # Save results
+        output_file = transcriber.save_results(result, filename)
+        
+        print(f"\n🎉 Transcription completed successfully!")
+        print(f"📄 Results saved to: {output_file}")
+        
+    except KeyboardInterrupt:
+        print("\n⏹️ Processing interrupted by user")
+        sys.exit(1)
+    except Exception as e:
+        print(f"\n❌ Processing failed: {e}")
+        sys.exit(1)
 
 
 if __name__ == '__main__':
