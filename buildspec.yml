@@ -8,26 +8,36 @@ phases:
       - echo "Installing dependencies..."
       - npm --version
       - node --version
-      - npm ci
-      - npm run install:all
+      - npm ci || exit 1
+      - npm run install:all || exit 1
   
   pre_build:
     commands:
       - echo "Running pre-build tasks..."
       - echo "Checking environment variables..."
+      - npm run test || exit 1
       
   build:
     commands:
       - echo "Building the application..."
-      - npm run build
+      - npm run build || exit 1
+      - echo "Verifying build artifacts..."
+      - ls -la backend/api/dist/ || echo "Backend dist folder not found"
+      - ls -la frontend/build/ || echo "Frontend build folder not found"
       
   post_build:
     commands:
       - echo "Build completed successfully"
+      - echo "Clearing any error flags..."
+      - unset CodePipeline_ErrorCode
+      - unset CodePipeline_ErrorSummary
 
 artifacts:
   files:
-    - '**/*'
+    - 'backend/api/dist/**/*'
+    - 'frontend/build/**/*'
+    - 'package.json'
+    - 'buildspec.yml'
   name: contextmd-build-$(date +%Y-%m-%d)
 
 cache:

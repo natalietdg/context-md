@@ -12,7 +12,8 @@
     "db:stop": "supabase stop",
     "start": "npm run dev:watch",
     "test": "npm run test --prefix backend/api",
-    "build": "npm run build --prefix backend/api && npm run build --prefix frontend"
+    "build": "npm run build --prefix backend/api && npm run build --prefix frontend",
+    "postinstall": "npm run install:all"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
