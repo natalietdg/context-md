@@ -1,65 +1,22 @@
 version: 0.2
 
-env:
-  variables:
-    NODE_OPTIONS: "--max-old-space-size=2048"
-    NPM_CONFIG_MAXSOCKETS: "1"
-    NPM_CONFIG_PROGRESS: "false"
-    NPM_CONFIG_FUND: "false"
-    NPM_CONFIG_AUDIT: "false"
-    NPM_CONFIG_LOGLEVEL: "error"
-
 phases:
   install:
     runtime-versions:
       nodejs: 20
     commands:
-      - echo "Installing backend dependencies..."
-      - npm --version
-      - node --version
-      - echo "Working directory contents:"
-      - ls -la
-      - echo "Moving directly to backend/api for installation..."
+      - echo "Installing dependencies"
       - cd backend/api
-      - echo "Backend API directory contents:"
-      - ls -la
-      - npm install --no-optional --no-fund --no-audit --prefer-offline
-      - echo "Verifying TypeScript installation:"
-      - ls -la node_modules/.bin/ | grep tsc || echo "tsc not found in node_modules/.bin"
-      - npm list typescript || echo "typescript not in package list"
-      - cd ../..
-  
-  pre_build:
-    commands:
-      - echo "Running backend tests..."
-      - cd backend/api
-      - npm run test || echo "Tests failed but continuing..."
-      - cd ../..
+      - npm install
       
   build:
     commands:
-      - echo "Building backend application..."
+      - echo "Building backend"
       - cd backend/api
-      - npm run build || echo "Build failed but continuing..."
-      - echo "Verifying build artifacts..."
-      - ls -la dist/ || echo "No dist folder found"
-      - echo "Build verification complete"
-      - cd ../..
-      
-  post_build:
-    commands:
-      - echo "Backend build completed successfully"
-      - echo "Clearing error variables explicitly..."
-      - export CodePipeline_ErrorCode=""
-      - export CodePipeline_ErrorSummary=""
+      - npx tsc -p tsconfig.json
+      - ls -la dist/
 
 artifacts:
   files:
     - 'backend/api/dist/**/*'
     - 'backend/api/package.json'
-    - 'backend/api/package-lock.json'
-  name: contextmd-backend-$(date +%Y-%m-%d)
-
-cache:
-  paths:
-    - backend/api/node_modules/**/*
