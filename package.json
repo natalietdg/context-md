@@ -10,6 +10,7 @@
     "_no-frontend": "echo '[warn] frontend/ is empty or missing a dev script; skipping frontend dev server.'",
     "db:start": "supabase start",
     "db:stop": "supabase stop", 
+    "prestart": "npm --prefix backend/api install && npm --prefix backend/api run build",
     "start": "npm run start:prod --prefix backend/api", 
     "start:prod": "node backend/api/dist/main.js",
     "build": "npm run build --prefix backend/api && npm run build --prefix frontend",

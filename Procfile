@@ -1,1 +1,1 @@
-web: npm run start:prod --prefix backend/api
+web: npm --prefix backend/api ci --omit=dev && node backend/api/dist/main.js
