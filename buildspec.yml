@@ -12,8 +12,9 @@ phases:
   build:
     commands:
       - echo "Building backend"
-      - cd backend/api && npx tsc -p tsconfig.json
-      - ls -la backend/api/dist/
+      - cd backend/api
+      - npx tsc -p tsconfig.json
+      - ls -la dist/
 
 artifacts:
   files:
