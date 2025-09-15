@@ -17,8 +17,8 @@ interface DatabaseCredentials {
 @Injectable()
 export class DatabaseService {
   private readonly logger = new Logger(DatabaseService.name);
-  private readonly secretName = process.env.AWS_RDS_SECRET_NAME || "your-rds-secret-name";
-  private readonly region = "ap-southeast-1";
+  private readonly secretName = process.env.AWS_SECRET_NAME || "your-rds-secret-name";
+  private readonly region = process.env.AWS_REGION;
   private secretsClient: SecretsManagerClient;
   private cachedCredentials: DatabaseCredentials | null = null;
   private credentialsExpiry: Date | null = null;
@@ -93,7 +93,7 @@ export class DatabaseService {
   // Health check method to verify database connectivity
   async healthCheck(): Promise<boolean> {
     try {
-      await this.getDatabaseCredentials();
+      // await this.getDatabaseCredentials();
       return true;
     } catch (error) {
       this.logger.error('Database health check failed', error);

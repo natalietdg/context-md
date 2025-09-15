@@ -15,23 +15,23 @@ export class DatabaseController {
     };
   }
 
-  @Get('config')
-  async getConfig() {
-    try {
-      const config = await this.databaseService.getDatabaseConfig();
-      // Return config without sensitive data
-      return {
-        host: config.host,
-        port: config.port,
-        database: config.database,
-        ssl: config.ssl,
-        status: 'connected'
-      };
-    } catch (error) {
-      return {
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
-  }
+  // @Get('config')
+  // async getConfig() {
+  //   try {
+  //     const config = await this.databaseService.getDatabaseConfig();
+  //     // Return config without sensitive data
+  //     return {
+  //       host: config.host,
+  //       port: config.port,
+  //       database: config.database,
+  //       ssl: config.ssl,
+  //       status: 'connected'
+  //     };
+  //   } catch (error) {
+  //     return {
+  //       status: 'error',
+  //       message: error instanceof Error ? error.message : 'Unknown error'
+  //     };
+  //   }
+  // }
 }

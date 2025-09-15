@@ -39,27 +39,24 @@ import { SecurityMiddleware } from './middleware/security.middleware';
         fileSize: 100 * 1024 * 1024, // 100MB limit for audio files
       },
     }),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: process.env.DATABASE_HOST || 'localhost',
-      port: parseInt(process.env.DATABASE_PORT ?? '5432'),
-      username: process.env.DATABASE_USER || 'postgres',
-      password: process.env.DATABASE_PASSWORD || '',
-      database: process.env.DATABASE_NAME || 'contextmd',
-      entities: [
-        entities.User,
-        entities.Doctor,
-        entities.Patient,
-        entities.Consent,
-        entities.ConsentReplayLog,
-        entities.Consultation,
-        entities.Report,
-        entities.Appointment,
-        entities.AuditLog,
-      ],
-      synchronize: process.env.NODE_ENV !== 'production',
-      logging: process.env.NODE_ENV === 'development',
-      ssl: false,
+    TypeOrmModule.forRootAsync({
+      inject: [DatabaseService],
+      useFactory: async (dbService: DatabaseService) => ({
+        type: 'postgres',
+        ...(await dbService.getDatabaseConfig()),
+        entities: [
+          entities.User,
+          entities.Doctor,
+          entities.Patient,
+          entities.Consent,
+          entities.ConsentReplayLog,
+          entities.Consultation,
+          entities.Report,
+          entities.Appointment,
+          entities.AuditLog,
+        ],
+        synchronize: false, // or true if you want auto schema sync in dev
+      }),
     }),
     // New modules
     UserModule,
