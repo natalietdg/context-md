@@ -14,7 +14,12 @@ import * as entities from '../entities';
             username: process.env.DATABASE_USER ?? '',
             password: process.env.DATABASE_PASSWORD ?? '',
             database: process.env.DATABASE_NAME ?? 'contextmd',
-            ssl: false,
+            ssl: {
+                rejectUnauthorized: false,
+            },
+            extra: {
+                ssl: true,
+            },
             entities: [
               entities.User,
               entities.Doctor,
