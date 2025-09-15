@@ -14,29 +14,26 @@ import * as entities from '../entities';
             username: process.env.DATABASE_USER ?? '',
             password: process.env.DATABASE_PASSWORD ?? '',
             database: process.env.DATABASE_NAME ?? 'contextmd',
-            ssl: {
+            ssl: process.env.ENVIRONMENT === "production" ? {
                 rejectUnauthorized: false,
-            },
-            extra: {
-                ssl: true,
-            },
+            } : false,
             entities: [
-              entities.User,
-              entities.Doctor,
-              entities.Patient,
-              entities.Consent,
-              entities.ConsentReplayLog,
-              entities.Consultation,
-              entities.Report,
-              entities.Appointment,
-              entities.AuditLog,
+                entities.User,
+                entities.Doctor,
+                entities.Patient,
+                entities.Consent,
+                entities.ConsentReplayLog,
+                entities.Consultation,
+                entities.Report,
+                entities.Appointment,
+                entities.AuditLog,
             ],
             synchronize: false,
-          }),    
+        }),
     ],
     providers: [DatabaseService],
     controllers: [DatabaseController],
     exports: [DatabaseService, TypeOrmModule],
-  })
-  export class DatabaseModule {}
-  
+})
+export class DatabaseModule { }
+
