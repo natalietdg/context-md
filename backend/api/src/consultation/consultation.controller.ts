@@ -88,6 +88,27 @@ export class ConsultationController {
     return this.consultationService.getConsultationProcessingStatus(id);
   }
 
+  @Put(':id/audio')
+  @UseInterceptors(FileInterceptor('audio'))
+  async uploadConsultationAudio(
+    @Param('id') id: string,
+    @UploadedFile() audioFile: Express.Multer.File,
+    @Request() req,
+  ) {
+    if (!audioFile) {
+      throw new BadRequestException('Audio file is required');
+    }
+
+    const requestInfo = {
+      userId: req.user.id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      sessionId: req.sessionID,
+    };
+
+    return this.consultationService.uploadConsultationAudio(id, audioFile.buffer, requestInfo);
+  }
+
   @Get('patient/:patientId')
   async getPatientConsultations(@Param('patientId') patientId: string) {
     return this.consultationService.getPatientConsultations(patientId);

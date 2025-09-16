@@ -23,14 +23,15 @@ import {
   Shield
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { LiveConsentKaraoke } from '../components/LiveConsentKaraoke';
 
 interface Consultation {
   id: string;
   consultation_date: string;
-  audio_s3_key?: string;
-  audio_hash?: string;
-  original_transcript?: string;
-  english_transcript?: string;
+  aws_audio_link?: string;
+  transcript_raw?: string;
+  transcript_eng?: string;
+  file_size?: number;
   processing_status: string;
   is_locked: boolean;
   notes?: string;
@@ -166,19 +167,12 @@ const Consultation: React.FC = () => {
 
       const formData = new FormData();
       formData.append('audio', audioBlob, 'consultation-audio.wav');
-      formData.append('patient_id', consultation.patient.id);
-      formData.append('consent_id', consultation.consent.id);
-      formData.append('notes', notes);
 
-      // Simulate upload progress
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => Math.min(prev + 10, 90));
-      }, 200);
-
-      await apiService.updateConsultation(consultation.id, formData);
-      
-      clearInterval(progressInterval);
-      setUploadProgress(100);
+      await apiService.uploadConsultationAudio(
+        consultation.id,
+        formData,
+        (percent) => setUploadProgress(percent)
+      );
       
       // Reload consultation data
       await loadConsultation();
@@ -367,11 +361,28 @@ const Consultation: React.FC = () => {
                         <CheckCircle className="h-5 w-5 text-green-600" />
                         <span className="text-green-800">Consent recorded</span>
                         <Badge variant="outline" className="text-green-700 border-green-300">
-                          {consultation.consent.status}
+                          {consultation.consent?.status}
                         </Badge>
                       </div>
                       {consultation.consent?.aws_audio_link && (
-                        <Button size="sm" variant="outline">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={async () => {
+                            try {
+                              const res = await apiService.replayConsent({
+                                consent_id: consultation.consent?.id || '',
+                                role: 'doctor',
+                                purpose: 'consultation_review'
+                              });
+                              if (res?.signedUrl) {
+                                window.open(res.signedUrl, '_blank');
+                              }
+                            } catch (e) {
+                              setError('Failed to replay consent');
+                            }
+                          }}
+                        >
                           <Play className="h-4 w-4 mr-1" />
                           Replay Consent
                         </Button>
@@ -380,14 +391,14 @@ const Consultation: React.FC = () => {
                     
                     {consultation.consent?.consent_text && (
                       <div className="bg-gray-50 border rounded-lg p-3">
-                        <p className="text-sm text-gray-700">{consultation.consent.consent_text}</p>
+                        <p className="text-sm text-gray-700">{consultation.consent?.consent_text}</p>
                       </div>
                     )}
                     
                     <div className="text-xs text-gray-500">
-                      Recorded: {format(new Date(consultation.consent.created_at || consultation.consultation_date), 'MMM dd, yyyy - h:mm a')}
-                      {consultation.consent.duration_seconds && (
-                        <span className="ml-2">• Duration: {Math.floor(consultation.consent.duration_seconds / 60)}:{(consultation.consent.duration_seconds % 60).toString().padStart(2, '0')}</span>
+                      Recorded: {format(new Date(consultation.consent?.created_at || consultation.consultation_date), 'MMM dd, yyyy - h:mm a')}
+                      {consultation.consent?.duration_seconds && (
+                        <span className="ml-2">• Duration: {Math.floor(consultation.consent?.duration_seconds / 60)}:{(consultation.consent?.duration_seconds % 60).toString().padStart(2, '0')}</span>
                       )}
                     </div>
                   </div>
@@ -402,10 +413,26 @@ const Consultation: React.FC = () => {
                       <p className="text-sm text-amber-800 mb-3">
                         Patient consent is required before proceeding with the consultation recording.
                       </p>
-                      <Button size="sm" className="bg-amber-600 hover:bg-amber-700">
-                        <Shield className="h-4 w-4 mr-1" />
-                        Record Consent
-                      </Button>
+                      
+                      <LiveConsentKaraoke
+                        words={[
+                          "I", "consent", "to", "the", "recording", "and", "processing", 
+                          "of", "my", "voice", "for", "medical", "documentation", "purposes"
+                        ]}
+                        lines={[
+                          "I consent to the recording and processing of my voice for medical documentation purposes."
+                        ]}
+                        language="en-US"
+                        sentenceMode={true}
+                        sentenceThreshold={0.7}
+                        ignoreBracketed={true}
+                        requirePDPAKeyword={false}
+                        onCompleted={() => {
+                          console.log('Consent completed');
+                          // TODO: Save consent to backend
+                        }}
+                        className="mt-4"
+                      />
                     </div>
                   </div>
                 )}
@@ -490,17 +517,21 @@ const Consultation: React.FC = () => {
                       </div>
                     )}
                   </div>
+                ) : (
+                  <div className="text-center text-gray-500 py-8">
+                    <p>Audio processing completed</p>
+                  </div>
                 )}
 
-                {consultation?.audio_s3_key && (
+                {consultation?.aws_audio_link && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                     <div className="flex items-center space-x-2">
                       <CheckCircle className="h-5 w-5 text-green-600" />
                       <span className="text-green-800">Audio uploaded successfully</span>
                     </div>
-                    {consultation.audio_hash && (
+                    {typeof consultation.file_size === 'number' && (
                       <p className="text-xs text-green-700 mt-2">
-                        Hash: {consultation.audio_hash.substring(0, 16)}...
+                        File size: {Math.round((consultation.file_size / (1024 * 1024)) * 100) / 100} MB
                       </p>
                     )}
                   </div>
@@ -509,33 +540,33 @@ const Consultation: React.FC = () => {
             </Card>
 
             {/* Transcripts */}
-            {(consultation?.original_transcript || consultation?.english_transcript) && (
+            {(consultation?.transcript_raw || consultation?.transcript_eng) && (
               <Card>
                 <CardHeader>
                   <CardTitle>Transcripts</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {consultation.original_transcript && (
+                  {consultation.transcript_raw && (
                     <div>
                       <label className="text-sm font-medium text-gray-600 mb-2 block">
-                        Original Transcript
+                        Raw Transcript
                       </label>
                       <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
                         <p className="text-gray-900 whitespace-pre-wrap">
-                          {consultation.original_transcript}
+                          {consultation.transcript_raw}
                         </p>
                       </div>
                     </div>
                   )}
                   
-                  {consultation.english_transcript && (
+                  {consultation.transcript_eng && (
                     <div>
                       <label className="text-sm font-medium text-gray-600 mb-2 block">
                         English Translation
                       </label>
                       <div className="bg-blue-50 rounded-lg p-4 max-h-64 overflow-y-auto">
                         <p className="text-gray-900 whitespace-pre-wrap">
-                          {consultation.english_transcript}
+                          {consultation.transcript_eng}
                         </p>
                       </div>
                     </div>
@@ -629,7 +660,7 @@ const Consultation: React.FC = () => {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Audio Upload</span>
-                    {consultation?.audio_s3_key ? (
+                    {consultation?.aws_audio_link ? (
                       <CheckCircle className="h-5 w-5 text-green-500" />
                     ) : (
                       <div className="h-5 w-5 rounded-full border-2 border-gray-300" />
@@ -638,7 +669,7 @@ const Consultation: React.FC = () => {
                   
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Transcription</span>
-                    {consultation?.original_transcript ? (
+                    {consultation?.transcript_raw ? (
                       <CheckCircle className="h-5 w-5 text-green-500" />
                     ) : consultation?.processing_status === 'processing' ? (
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
@@ -649,7 +680,7 @@ const Consultation: React.FC = () => {
                   
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Translation</span>
-                    {consultation?.english_transcript ? (
+                    {consultation?.transcript_eng ? (
                       <CheckCircle className="h-5 w-5 text-green-500" />
                     ) : consultation?.processing_status === 'processing' ? (
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
@@ -669,20 +700,29 @@ const Consultation: React.FC = () => {
               <CardContent>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Status</span>
-                  <Badge className={consultation?.consent.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                    {consultation?.consent.status}
+                  <Badge className={consultation?.consent?.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                    {consultation?.consent?.status}
                   </Badge>
                 </div>
-                {consultation?.consent.audio_s3_key && (
+                {consultation?.consent?.aws_audio_link && (
                   <Button
                     variant="outline"
                     size="sm"
                     className="w-full mt-3"
-                    onClick={() => apiService.replayConsent({
-                      consent_id: consultation.consent.id,
-                      role: 'doctor',
-                      purpose: 'consultation_review'
-                    })}
+                    onClick={async () => {
+                      try {
+                        const res = await apiService.replayConsent({
+                          consent_id: consultation.consent?.id || '',
+                          role: 'doctor',
+                          purpose: 'consultation_review'
+                        });
+                        if (res?.signedUrl) {
+                          window.open(res.signedUrl, '_blank');
+                        }
+                      } catch (e) {
+                        setError('Failed to replay consent');
+                      }
+                    }}
                   >
                     <Play className="h-4 w-4 mr-2" />
                     Replay Consent

@@ -148,6 +148,24 @@ class ApiService {
     return response.data;
   }
 
+  async uploadConsultationAudio(
+    id: string,
+    data: FormData,
+    onProgress?: (percent: number) => void
+  ) {
+    const response = await this.api.put(`/consultation/${id}/audio`, data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (evt) => {
+        if (!onProgress) return;
+        if (typeof evt.total === 'number' && evt.total > 0) {
+          const percent = Math.round((evt.loaded * 100) / evt.total);
+          onProgress(percent);
+        }
+      }
+    });
+    return response.data;
+  }
+
   async lockConsultation(data: { consultation_id: string; lock?: boolean }) {
     const response = await this.api.put('/consultation/lock', data);
     return response.data;

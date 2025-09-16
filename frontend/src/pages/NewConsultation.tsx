@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
@@ -15,7 +15,11 @@ import {
   FileText, 
   Plus,
   Search,
-  AlertCircle
+  AlertCircle,
+  Mic,
+  MicOff,
+  Upload,
+  FileAudio
 } from 'lucide-react';
 
 interface Patient {
@@ -40,6 +44,10 @@ const NewConsultation: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingPatients, setIsLoadingPatients] = useState(true);
   const [error, setError] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadPatients();
@@ -59,6 +67,48 @@ const NewConsultation: React.FC = () => {
     }
   };
 
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: BlobPart[] = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunks.push(event.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/wav' });
+        setAudioBlob(blob);
+        stream.getTracks().forEach(t => t.stop());
+      };
+
+      recorder.start();
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+      setError('');
+    } catch (e) {
+      console.error('Mic access failed', e);
+      setError('Failed to access microphone');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder && isRecording) {
+      mediaRecorder.stop();
+      setMediaRecorder(null);
+      setIsRecording(false);
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAudioBlob(file);
+      setError('');
+    }
+  };
+
   const filteredPatients = patients.filter(patient => {
     const searchTerm = patientSearch.toLowerCase();
     return patient.name.toLowerCase().includes(searchTerm) ||
@@ -71,19 +121,23 @@ const NewConsultation: React.FC = () => {
       setError('Please select a patient');
       return;
     }
+    if (!audioBlob) {
+      setError('Please record or upload an audio file for the consultation');
+      return;
+    }
 
     try {
       setIsLoading(true);
       setError('');
 
-      const consultationData = {
-        patient_id: selectedPatient,
-        doctor_id: user?.id,
-        consultation_date: new Date(consultationDate).toISOString(),
-        notes: notes.trim() || undefined,
-      };
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'consultation-audio.wav');
+      formData.append('patient_id', selectedPatient);
+      if (user?.id) formData.append('doctor_id', user.id);
+      formData.append('consultation_date', new Date(consultationDate).toISOString());
+      if (notes.trim()) formData.append('notes', notes.trim());
 
-      const newConsultation = await apiService.createConsultation(consultationData);
+      const newConsultation = await apiService.createConsultation(formData);
       
       // Navigate to the new consultation page
       navigate(`/consultation/${newConsultation.id}`);
@@ -210,15 +264,64 @@ const NewConsultation: React.FC = () => {
               />
             </div>
 
+            {/* Audio Recording (Required) */}
+            <div className="space-y-2">
+              <Label>Consultation Audio (Required)</Label>
+              <div className="flex items-center space-x-4">
+                <Button
+                  onClick={isRecording ? stopRecording : startRecording}
+                  className={isRecording ? 'bg-red-600 hover:bg-red-700' : ''}
+                  type="button"
+                >
+                  {isRecording ? (
+                    <>
+                      <MicOff className="h-4 w-4 mr-2" />
+                      Stop Recording
+                    </>
+                  ) : (
+                    <>
+                      <Mic className="h-4 w-4 mr-2" />
+                      Start Recording
+                    </>
+                  )}
+                </Button>
+
+                <span className="text-gray-500">or</span>
+
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload File
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="audio/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </div>
+
+              {audioBlob && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center space-x-2">
+                  <FileAudio className="h-5 w-5 text-blue-600" />
+                  <span className="text-blue-800 text-sm">Audio ready for submission</span>
+                </div>
+              )}
+            </div>
+
             {/* Action Buttons */}
             <div className="flex gap-3 pt-4">
               <Button
                 onClick={createConsultation}
-                disabled={isLoading || !selectedPatient}
+                disabled={isLoading || !selectedPatient || !audioBlob}
                 className="flex-1"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                {isLoading ? 'Creating...' : 'Start Consultation'}
+                {isLoading ? 'Creating...' : 'Start Consultation with Audio'}
               </Button>
               <Button
                 variant="outline"

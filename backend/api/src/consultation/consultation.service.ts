@@ -178,6 +178,62 @@ export class ConsultationService {
     return updatedConsultation;
   }
 
+  async uploadConsultationAudio(
+    consultationId: string,
+    audioFile: Buffer,
+    requestInfo: { userId: string; ipAddress?: string; userAgent?: string; sessionId?: string }
+  ): Promise<Consultation> {
+    const consultation = await this.getConsultation(consultationId);
+
+    if (consultation.is_locked) {
+      throw new BadRequestException('Consultation is locked and cannot be modified');
+    }
+
+    try {
+      // Generate S3 key and upload audio
+      const s3Key = this.s3Service.generateFileKey('consultation', consultation.patient_id);
+      const uploadResult = await this.s3Service.uploadFile(
+        audioFile,
+        s3Key,
+        'audio/wav',
+        {
+          patientId: consultation.patient_id,
+          doctorId: consultation.doctor_id,
+          type: 'consultation',
+        }
+      );
+
+      // Update consultation fields and reset status
+      consultation.aws_audio_link = uploadResult.url;
+      consultation.file_size = uploadResult.size;
+      consultation.processing_status = ProcessingStatus.PENDING;
+
+      const saved = await this.consultationRepository.save(consultation);
+
+      // Log audit trail
+      await this.auditService.log(
+        requestInfo.userId,
+        UserType.DOCTOR,
+        'UPLOAD_CONSULTATION_AUDIO',
+        'consultation',
+        consultationId,
+        { patient_id: consultation.patient_id, doctor_id: consultation.doctor_id },
+        requestInfo.ipAddress,
+        requestInfo.userAgent,
+        requestInfo.sessionId,
+      );
+
+      // Start async audio processing
+      this.processConsultationAudio(consultationId, audioFile);
+
+      this.logger.log(`Consultation audio uploaded for ${consultationId}`);
+      return saved;
+    } catch (error) {
+      this.logger.error(`Failed to upload consultation audio for ${consultationId}:`, error);
+      throw new BadRequestException(`Failed to upload consultation audio: ${error.message}`);
+    }
+  }
+
   async lockConsultation(
     lockDto: LockConsultationDto,
     requestInfo: { userId: string; ipAddress?: string; userAgent?: string; sessionId?: string }
