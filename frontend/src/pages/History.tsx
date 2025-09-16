@@ -76,12 +76,13 @@ interface HandoverSummary {
 }
 
 const History: React.FC = () => {
-  const { patientId } = useParams<{ patientId: string }>();
+  const { patientId } = useParams<{ patientId?: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
   
   const [patientHistory, setPatientHistory] = useState<PatientHistory | null>(null);
   const [handoverSummary, setHandoverSummary] = useState<HandoverSummary | null>(null);
+  const [patients, setPatients] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -92,8 +93,30 @@ const History: React.FC = () => {
   useEffect(() => {
     if (patientId) {
       loadPatientData();
+    } else {
+      loadPatientsList();
     }
   }, [patientId]);
+
+  const loadPatientsList = async () => {
+    try {
+      setIsLoading(true);
+      setError(''); // Clear any previous errors
+      const patientsData = await apiService.getPatients();
+      setPatients(patientsData || []);
+    } catch (err: any) {
+      console.error('Patients list error:', err);
+      // If it's a 404 or no patients, don't show as error
+      if (err.response?.status === 404 || err.message?.includes('No patients')) {
+        setPatients([]);
+        setError('');
+      } else {
+        setError(`Failed to load patients list: ${err.response?.data?.message || err.message}`);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const loadPatientData = async () => {
     try {
@@ -188,9 +211,92 @@ const History: React.FC = () => {
             <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading History</h3>
             <p className="text-gray-600 mb-4">{error}</p>
-            <Button onClick={loadPatientData}>Try Again</Button>
+            <Button onClick={patientId ? loadPatientData : loadPatientsList}>Try Again</Button>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  // If no patient ID, show patient list
+  if (!patientId) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-6">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Patient History</h1>
+                <p className="text-gray-600">Select a patient to view their medical history</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Search */}
+          <Card className="mb-8">
+            <CardContent className="pt-6">
+              <div className="flex space-x-4">
+                <div className="flex-1">
+                  <Input
+                    placeholder="Search patients by name or email..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <Button onClick={() => {}}>
+                  <Search className="h-4 w-4 mr-2" />
+                  Search
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Patients List */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <User className="h-5 w-5" />
+                <span>Patients</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {patients.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">No patients found</p>
+                ) : (
+                  patients
+                    .filter(patient => 
+                      !searchTerm || 
+                      patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      patient.email.toLowerCase().includes(searchTerm.toLowerCase())
+                    )
+                    .map((patient) => (
+                      <div key={patient.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <h4 className="font-semibold text-gray-900">{patient.name}</h4>
+                            <p className="text-gray-600 text-sm">{patient.email}</p>
+                            {patient.phone && (
+                              <p className="text-gray-500 text-sm">{patient.phone}</p>
+                            )}
+                          </div>
+                          <Button
+                            onClick={() => navigate(`/history/patient/${patient.id}`)}
+                            className="flex items-center space-x-2"
+                          >
+                            <span>View History</span>
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }

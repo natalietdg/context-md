@@ -5,11 +5,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
-import { Doctor, Patient } from '../entities';
+import { Doctor, Patient, User } from '../entities';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Doctor, Patient]),
+    TypeOrmModule.forFeature([Doctor, Patient, User]),
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'contextmd-secret-key',

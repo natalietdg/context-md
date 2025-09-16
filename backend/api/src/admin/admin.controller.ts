@@ -17,6 +17,12 @@ export class AdminController {
     return this.adminService.seedBasic();
   }
 
+  @Post('db/seed-comprehensive')
+  @HttpCode(HttpStatus.OK)
+  async seedComprehensive() {
+    return this.adminService.seedComprehensive();
+  }
+
   @Post('db/insert')
   @HttpCode(HttpStatus.OK)
   async insert(@Body() body: { entity: 'doctor' | 'patient' | 'user'; records: any[] }) {

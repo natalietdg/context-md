@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -59,6 +60,7 @@ interface RecentConsultation {
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState<{
     stats: DashboardStats;
     upcomingAppointments: UpcomingAppointment[];
@@ -335,7 +337,11 @@ const Dashboard: React.FC = () => {
                           Reports: {consultation.reports.length}
                         </span>
                         <div className="space-x-2">
-                          <Button size="sm" variant="outline">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => navigate(`/consultation/${consultation.id}`)}
+                          >
                             View Details
                           </Button>
                           {consultation.reports.length === 0 && consultation.processing_status === 'completed' && (

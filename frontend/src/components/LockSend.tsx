@@ -25,7 +25,7 @@ export function LockSend({ transcript, summary, onPrevious }: { transcript: any,
       hour: '2-digit',
       minute: '2-digit'
     }),
-    doctor: 'Dr. Sarah Chen'
+    doctor: 'Sarah Chen'
   };
 
   const handleLockAndSend = async () => {

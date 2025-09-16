@@ -247,4 +247,31 @@ export class ReportService {
     this.logger.log(`Report regenerated: ${reportId}`);
     return updatedReport;
   }
+
+  async getAllReports(
+    requestInfo: { userId: string; ipAddress?: string; userAgent?: string; sessionId?: string }
+  ): Promise<Report[]> {
+    const reports = await this.reportRepository.find({
+      relations: ['consultation', 'consultation.patient', 'consultation.doctor'],
+      order: { created_at: 'DESC' },
+    });
+
+    // Log audit trail
+    if (requestInfo) {
+      await this.auditService.log(
+        requestInfo.userId,
+        UserType.DOCTOR,
+        'VIEW_ALL_REPORTS',
+        'report',
+        null,
+        { count: reports.length },
+        requestInfo.ipAddress,
+        requestInfo.userAgent,
+        requestInfo.sessionId,
+      );
+    }
+
+    this.logger.log(`Retrieved ${reports.length} reports`);
+    return reports;
+  }
 }

@@ -89,4 +89,15 @@ export class ReportController {
   async getReportsWithConflicts() {
     return this.reportService.getReportsWithConflicts();
   }
+
+  @Get('all')
+  async getAllReports(@Request() req) {
+    const requestInfo = {
+      userId: req.user.id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      sessionId: req.sessionID,
+    };
+    return this.reportService.getAllReports(requestInfo);
+  }
 }

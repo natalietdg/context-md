@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { Doctor, Patient } from '../entities';
+import { Doctor, Patient, User, ProfileType } from '../entities';
 import { LoginDto, RegisterDoctorDto } from './dto';
 
 export interface JwtPayload {
@@ -20,25 +20,47 @@ export class AuthService {
     private doctorRepository: Repository<Doctor>,
     @InjectRepository(Patient)
     private patientRepository: Repository<Patient>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
     private jwtService: JwtService,
   ) {}
 
   async validateUser(email: string, password: string, role: 'doctor' | 'patient') {
-    let user;
-    
-    if (role === 'doctor') {
-      user = await this.doctorRepository.findOne({ 
-        where: { email, is_active: true } 
-      });
-    } else {
-      user = await this.patientRepository.findOne({ 
-        where: { email, is_active: true } 
-      });
+    // Find all users with the specified role
+    const users = await this.userRepository.find({
+      where: { 
+        profile_type: role === 'doctor' ? ProfileType.DOCTOR : ProfileType.PATIENT,
+        is_active: true 
+      }
+    });
+
+    // Find user with matching email (need to decrypt each to compare)
+    let matchingUser = null;
+    for (const user of users) {
+      if (user.email === email) {
+        matchingUser = user;
+        break;
+      }
     }
 
-    if (user && await bcrypt.compare(password, user.password_hash)) {
-      const { password_hash, ...result } = user;
-      return result;
+    // Check if user exists and password matches
+    if (matchingUser && await bcrypt.compare(password, matchingUser.password_hash)) {
+      // Get the profile entity (doctor or patient)
+      let profile;
+      if (role === 'doctor') {
+        profile = await this.doctorRepository.findOne({ where: { id: matchingUser.profile_id } });
+      } else {
+        profile = await this.patientRepository.findOne({ where: { id: matchingUser.profile_id } });
+      }
+
+      return {
+        id: matchingUser.profile_id,
+        email: matchingUser.email,
+        role,
+        name: profile?.name,
+        employee_id: profile?.employee_id,
+        department: profile?.department,
+      };
     }
     return null;
   }
@@ -68,8 +90,8 @@ export class AuthService {
         email: user.email,
         role,
         ...(role === 'doctor' && { 
-          employee_id: (user as Doctor).employee_id,
-          department: (user as Doctor).department 
+          employee_id: user.employee_id,
+          department: user.department 
         }),
       },
     };

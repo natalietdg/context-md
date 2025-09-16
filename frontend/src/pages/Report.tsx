@@ -20,8 +20,11 @@ import {
   Activity,
   Edit3,
   Save,
-  X
+  X,
+  Search,
+  ChevronRight
 } from 'lucide-react';
+import { Input } from '../components/ui/input';
 import { format } from 'date-fns';
 
 interface Report {
@@ -54,6 +57,7 @@ const Report: React.FC = () => {
   const navigate = useNavigate();
   
   const [report, setReport] = useState<Report | null>(null);
+  const [reports, setReports] = useState<Report[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [isRegenerating, setIsRegenerating] = useState(false);
@@ -61,14 +65,130 @@ const Report: React.FC = () => {
   const [editedReport, setEditedReport] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [targetLanguage, setTargetLanguage] = useState('en');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     if (id) {
       loadReport();
     } else if (consultationId) {
       loadReportByConsultation();
+    } else {
+      loadAllReports();
     }
   }, [id, consultationId]);
+
+  const loadAllReports = async () => {
+    try {
+      setIsLoading(true);
+      const reportsData = await apiService.getAllReports();
+      setReports(reportsData);
+    } catch (err: any) {
+      setError('Failed to load reports');
+      console.error('Reports list error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // If no ID provided, show reports list
+  if (!id && !consultationId) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-6">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
+                <p className="text-gray-600">Search and view medical reports</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Search */}
+          <Card className="mb-8">
+            <CardContent className="pt-6">
+              <div className="flex space-x-4">
+                <div className="flex-1">
+                  <Input
+                    placeholder="Search reports by ID, patient name, or diagnosis..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <Button onClick={() => {}}>
+                  <Search className="h-4 w-4 mr-2" />
+                  Search
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Reports List */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <FileText className="h-5 w-5" />
+                <span>Medical Reports</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {isLoading ? (
+                  <p className="text-gray-500 text-center py-8">Loading reports...</p>
+                ) : reports.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">No reports found</p>
+                ) : (
+                  reports
+                    .filter(report => 
+                      !searchTerm || 
+                      report.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      report.consultation.patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      (report.structured_report?.assessment?.primary_diagnosis && 
+                       report.structured_report.assessment.primary_diagnosis.toLowerCase().includes(searchTerm.toLowerCase()))
+                    )
+                    .map((report) => (
+                      <div key={report.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <h4 className="font-semibold text-gray-900">Report #{report.id.slice(-8)}</h4>
+                              <Badge variant="outline">{report.target_language?.toUpperCase() || 'EN'}</Badge>
+                            </div>
+                            <p className="text-gray-600 text-sm mb-1">
+                              Patient: {report.consultation.patient.name}
+                            </p>
+                            <p className="text-gray-600 text-sm mb-1">
+                              Doctor: {report.consultation.doctor.name} • {report.consultation.doctor.department}
+                            </p>
+                            <p className="text-gray-500 text-sm mb-2">
+                              Generated: {format(new Date(report.generated_at), 'MMM dd, yyyy h:mm a')}
+                            </p>
+                            {report.structured_report?.assessment?.primary_diagnosis && (
+                              <p className="text-blue-700 text-sm font-medium">
+                                Diagnosis: {report.structured_report.assessment.primary_diagnosis}
+                              </p>
+                            )}
+                          </div>
+                          <Button
+                            onClick={() => navigate(`/report/${report.id}`)}
+                            className="flex items-center space-x-2"
+                          >
+                            <span>View Report</span>
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   const loadReport = async () => {
     try {

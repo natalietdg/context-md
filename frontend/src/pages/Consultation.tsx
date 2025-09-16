@@ -19,7 +19,8 @@ import {
   Unlock,
   Play,
   Pause,
-  Download
+  Download,
+  Shield
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -45,10 +46,13 @@ interface Consultation {
     name: string;
     department?: string;
   };
-  consent: {
+  consent?: {
     id: string;
     status: string;
-    audio_s3_key?: string;
+    aws_audio_link?: string;
+    consent_text?: string;
+    duration_seconds?: number;
+    created_at?: string;
   };
   reports: any[];
 }
@@ -75,6 +79,22 @@ const Consultation: React.FC = () => {
       loadConsultation();
     }
   }, [id]);
+
+  // Early return if no ID is provided
+  if (!id) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="text-center p-6">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Consultation ID</h3>
+            <p className="text-gray-600 mb-4">Please provide a valid consultation ID to view this page.</p>
+            <Button onClick={() => navigate('/dashboard')}>Go to Dashboard</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   useEffect(() => {
     if (consultation) {
@@ -331,16 +351,77 @@ const Consultation: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* Audio Recording/Upload */}
+            {/* Consent Section */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <FileAudio className="h-5 w-5" />
-                  <span>Audio Recording</span>
+                <CardTitle className="flex items-center">
+                  <Shield className="h-5 w-5 mr-2" />
+                  Patient Consent
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {!consultation?.audio_s3_key && !consultation?.is_locked && (
+              <CardContent>
+                {consultation?.consent ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                        <span className="text-green-800">Consent recorded</span>
+                        <Badge variant="outline" className="text-green-700 border-green-300">
+                          {consultation.consent.status}
+                        </Badge>
+                      </div>
+                      {consultation.consent?.aws_audio_link && (
+                        <Button size="sm" variant="outline">
+                          <Play className="h-4 w-4 mr-1" />
+                          Replay Consent
+                        </Button>
+                      )}
+                    </div>
+                    
+                    {consultation.consent?.consent_text && (
+                      <div className="bg-gray-50 border rounded-lg p-3">
+                        <p className="text-sm text-gray-700">{consultation.consent.consent_text}</p>
+                      </div>
+                    )}
+                    
+                    <div className="text-xs text-gray-500">
+                      Recorded: {format(new Date(consultation.consent.created_at || consultation.consultation_date), 'MMM dd, yyyy - h:mm a')}
+                      {consultation.consent.duration_seconds && (
+                        <span className="ml-2">• Duration: {Math.floor(consultation.consent.duration_seconds / 60)}:{(consultation.consent.duration_seconds % 60).toString().padStart(2, '0')}</span>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2 text-amber-600">
+                      <AlertCircle className="h-5 w-5" />
+                      <span>No consent recorded for this consultation</span>
+                    </div>
+                    
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                      <p className="text-sm text-amber-800 mb-3">
+                        Patient consent is required before proceeding with the consultation recording.
+                      </p>
+                      <Button size="sm" className="bg-amber-600 hover:bg-amber-700">
+                        <Shield className="h-4 w-4 mr-1" />
+                        Record Consent
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Audio Recording */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Mic className="h-5 w-5 mr-2" />
+                  Audio Recording
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {consultation?.processing_status === 'pending' ? (
                   <div className="space-y-4">
                     {/* Recording Controls */}
                     <div className="flex items-center space-x-4">

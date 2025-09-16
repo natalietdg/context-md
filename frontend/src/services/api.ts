@@ -121,11 +121,21 @@ class ApiService {
   }
 
   // Consultation endpoints
-  async createConsultation(data: FormData) {
-    const response = await this.api.post('/consultation', data, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return response.data;
+  async createConsultation(data: FormData | {
+    patient_id: string;
+    doctor_id?: string;
+    consultation_date: string;
+    notes?: string;
+  }) {
+    if (data instanceof FormData) {
+      const response = await this.api.post('/consultation', data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    } else {
+      const response = await this.api.post('/consultation', data);
+      return response.data;
+    }
   }
 
   async getConsultation(id: string) {
@@ -201,6 +211,11 @@ class ApiService {
     return response.data;
   }
 
+  async getAllReports() {
+    const response = await this.api.get('/report/all');
+    return response.data;
+  }
+
   // History endpoints
   async getPatientHistory(patientId: string) {
     const response = await this.api.get(`/history/patient/${patientId}`);
@@ -227,6 +242,12 @@ class ApiService {
   // Dashboard endpoints
   async getDoctorDashboard(doctorId: string) {
     const response = await this.api.get(`/dashboard/doctor/${doctorId}`);
+    return response.data;
+  }
+
+  // Patient endpoints
+  async getPatients() {
+    const response = await this.api.get('/patients');
     return response.data;
   }
 

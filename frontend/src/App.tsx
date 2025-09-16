@@ -5,8 +5,9 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Consultation from './pages/Consultation';
-import Report from './pages/Report';
+import NewConsultation from './pages/NewConsultation';
 import History from './pages/History';
+import Report from './pages/Report';
 import Navigation from './components/Navigation';
 
 // Protected Route component
@@ -55,11 +56,31 @@ const App: React.FC = () => {
             }
           />
           <Route
+            path="/consultation"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <NewConsultation />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/consultation/:id"
             element={
               <ProtectedRoute>
                 <Layout>
                   <Consultation />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/report"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Report />
                 </Layout>
               </ProtectedRoute>
             }
@@ -80,6 +101,16 @@ const App: React.FC = () => {
               <ProtectedRoute>
                 <Layout>
                   <Report />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/history"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <History />
                 </Layout>
               </ProtectedRoute>
             }

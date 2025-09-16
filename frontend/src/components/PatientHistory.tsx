@@ -3,10 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
 import { Calendar, ChevronDown, ChevronUp, AlertTriangle, User, CheckCircle } from 'lucide-react';
-import { ConsultationEntry, mockHistory } from '../utils/history';
+import { ConsultationEntry } from '../utils/history';
 
 export default function PatientHistory({ language }: { language?: string }) {
-  const [entries, setEntries] = useState<ConsultationEntry[]>(() => mockHistory());
+  const [entries, setEntries] = useState<ConsultationEntry[]>(() => []);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
