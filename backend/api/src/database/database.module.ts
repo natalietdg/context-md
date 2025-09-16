@@ -17,7 +17,7 @@ import * as path from 'path';
             password: process.env.DATABASE_PASSWORD ?? '',
             database: process.env.DATABASE_NAME ?? 'contextmd',
             ssl: process.env.ENVIRONMENT === "production" ? {
-                ca: fs.readFileSync(path.join(__dirname, '../../rds-ca-2019-root.pem')).toString(),
+                ca: fs.readFileSync(path.join(process.cwd(), 'rds-ca-2019-root.pem')).toString(),
                 rejectUnauthorized: false,
             } : false,
             entities: [
