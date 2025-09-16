@@ -1,0 +1,24 @@
+{
+  "summary": "Patient reports pain changes with posture, prefers softer chair.",
+  "chief_complaint": "back pain",
+  "symptoms_present": [
+    "sharp pain"
+  ],
+  "symptoms_negated": [
+    "less sharp pain"
+  ],
+  "onset_or_duration": null,
+  "allergy_substance": [],
+  "meds_current": [],
+  "conditions_past": [],
+  "primary_diagnosis": "postural-related back pain",
+  "rx_drug": null,
+  "rx_dose": null,
+  "follow_up": "try firmer chair or cushion for better support",
+  "red_flags": [],
+  "_metadata": {
+    "source_file": "english2p1_lean_1757948736_translated.json",
+    "model_used": "Qwen/Qwen2.5-3B-Instruct",
+    "extraction_method": "llm"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "summary": "Patient reports shortness of breath and chest tightness for 3 days, exacerbated by activity; has type 2 diabetes and hypertension.",
+  "chief_complaint": "Shortness of breath and chest tightness",
+  "symptoms_present": [
+    "shortness of breath",
+    "chest tightness"
+  ],
+  "symptoms_negated": [
+    "fever",
+    "cough",
+    "chest pain at rest"
+  ],
+  "onset_or_duration": "for 3 days, exacerbated by activity",
+  "allergy_substance": [
+    "panadol"
+  ],
+  "meds_current": [
+    "metformin",
+    "amlodipine"
+  ],
+  "conditions_past": [
+    "asthma",
+    "hypertension",
+    "diabetes"
+  ],
+  "primary_diagnosis": "stable angina",
+  "rx_drug": "nitroglycerin",
+  "rx_dose": "0.4 mg sublingual tablets, to take as needed",
+  "follow_up": "return in 2 weeks if chest pain occurs at rest, lasts more than 15 minutes, or is accompanied by sweating or severe breathlessness",
+  "red_flags": [
+    "chest pain occurs at rest",
+    "chest pain lasts more than 15 minutes",
+    "chest pain is accompanied by sweating or severe breathlessness"
+  ],
+  "_metadata": {
+    "source_file": "english_fake1_translated.json",
+    "model_used": "Qwen/Qwen2.5-3B-Instruct",
+    "extraction_method": "llm"
+  }
+}

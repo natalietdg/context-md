@@ -1,0 +1,24 @@
+{
+  "summary": "Patient complained of changing pain sensation, diagnosed with possible back pain, no specific treatment prescribed",
+  "chief_complaint": "changing pain sensation",
+  "symptoms_present": [
+    "sharp pain",
+    "less sharp pain"
+  ],
+  "symptoms_negated": [],
+  "onset_or_duration": null,
+  "allergy_substance": [],
+  "meds_current": [],
+  "conditions_past": [],
+  "primary_diagnosis": "back pain",
+  "rx_drug": null,
+  "rx_dose": null,
+  "follow_up": "Try a firmer chair or add a cushion for better support",
+  "red_flags": [],
+  "_metadata": {
+    "source_file": "english2p1_lean_1758018539.json",
+    "model_used": "/Users/estherlow/models/Qwen2.5-3B-Instruct",
+    "extraction_method": "llm",
+    "pipeline_version": "1.0"
+  }
+}

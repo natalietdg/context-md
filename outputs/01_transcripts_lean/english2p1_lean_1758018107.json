@@ -6,7 +6,7 @@
     {
       "turn_id": 1,
       "speaker": "SPEAKER_01",
-      "text": "The pain does change when I stand up when I stand up it feels less of a sharp pain with only when I'm sitting down."
+      "text": "The pain does change when I stand up. When I stand up, it feels less of a sharp pain only when I'm sitting down."
     },
     {
       "turn_id": 2,
@@ -21,7 +21,7 @@
     {
       "turn_id": 4,
       "speaker": "SPEAKER_00",
-      "text": "Yes, a soft chair might not provide enough support, especially for your back. That could definitely contribute to the pain, perhaps try a firmer chair, or add a cushion for better support."
+      "text": "Yes, a soft chair might not provide enough support, especially for your back. That could definitely contribute to the pain, perhaps try a firmer chair or add a cushion for better support."
     }
   ]
 }

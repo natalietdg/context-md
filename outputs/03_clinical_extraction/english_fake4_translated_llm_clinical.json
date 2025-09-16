@@ -1,0 +1,31 @@
+{
+  "summary": "Patient mentions taking Lipitor for 3 months and reports muscle aches possibly related to exercise.",
+  "chief_complaint": "Muscle aches",
+  "symptoms_present": [
+    "muscle aches",
+    "hives"
+  ],
+  "symptoms_negated": [
+    "exercise-induced muscle aches"
+  ],
+  "onset_or_duration": "3 months",
+  "allergy_substance": [
+    "Zyrtec"
+  ],
+  "meds_current": [
+    "lipitor"
+  ],
+  "conditions_past": [],
+  "primary_diagnosis": null,
+  "rx_drug": null,
+  "rx_dose": null,
+  "follow_up": null,
+  "red_flags": [
+    "hives"
+  ],
+  "_metadata": {
+    "source_file": "english_fake4_translated.json",
+    "model_used": "Qwen/Qwen2.5-3B-Instruct",
+    "extraction_method": "llm"
+  }
+}
