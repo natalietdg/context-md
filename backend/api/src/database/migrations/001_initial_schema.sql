@@ -141,6 +141,15 @@ CREATE INDEX idx_appointment_doctor_scheduled ON appointment(doctor_id, schedule
 CREATE INDEX idx_appointment_patient_scheduled ON appointment(patient_id, scheduled_at);
 CREATE INDEX idx_audit_log_user_created ON audit_log(user_id, created_at);
 
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,     -- store bcrypt/argon2 hash, never plaintext
+    role TEXT NOT NULL CHECK (role IN ('doctor', 'patient', 'admin', 'superadmin')),
+    created_at TIMESTAMP DEFAULT now(),
+    updated_at TIMESTAMP DEFAULT now()
+);
+
 -- Triggers for updated_at timestamps
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$

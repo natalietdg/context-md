@@ -12,6 +12,7 @@ import { ReportModule } from './report/report.module';
 import { HistoryModule } from './history/history.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { UserModule } from './user/user.module';
+import { AdminModule } from './admin/admin.module';
 
 // Import entities
 import * as entities from './entities';
@@ -35,6 +36,7 @@ import { DatabaseModule } from './database/database.module';
       dest: './uploads',
       limits: { fileSize: 100 * 1024 * 1024 },
     }),
+    AdminModule,
     UserModule,
     AuthModule,
     ConsentModule,
