@@ -87,17 +87,12 @@ export class AuthService {
       throw new UnauthorizedException('Doctor with this email or employee ID already exists');
     }
 
-    // Hash password
-    const saltRounds = 10;
-    const password_hash = await bcrypt.hash(password, saltRounds);
-
     // Create new doctor
     const doctor = this.doctorRepository.create({
       name,
       employee_id,
       department,
       email,
-      password_hash,
     });
 
     const savedDoctor = await this.doctorRepository.save(doctor);

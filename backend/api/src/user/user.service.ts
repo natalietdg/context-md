@@ -78,6 +78,8 @@ export class UserService {
         password_hash: 'deprecated', // Deprecated field
       });
 
+      doctor.email = createDoctorDto.email;
+
       const savedDoctor = await queryRunner.manager.save(doctor);
 
       // Hash password
@@ -86,11 +88,12 @@ export class UserService {
 
       // Create user
       const user = queryRunner.manager.create(User, {
-        email: createDoctorDto.email,
-        password_hash: hashedPassword,
         profile_id: savedDoctor.id,
         profile_type: ProfileType.DOCTOR,
       });
+
+      user.email = createDoctorDto.email;
+      user.password_hash = hashedPassword;
 
       const savedUser = await queryRunner.manager.save(user);
 

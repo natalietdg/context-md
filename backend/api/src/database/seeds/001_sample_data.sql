@@ -1,7 +1,7 @@
 -- Sample data for ContextMD development and testing
 
 -- Insert sample doctors
-INSERT INTO doctor (id, name, employee_id, department, email, password_hash) VALUES
+INSERT INTO doctor (id, name, employee_id, department, email) VALUES
 ('550e8400-e29b-41d4-a716-446655440001', 'Dr. Sarah Chen', 'DOC001', 'General Medicine', 'sarah.chen@contextmd.com', '$2b$10$example_hash_1'),
 ('550e8400-e29b-41d4-a716-446655440002', 'Dr. Ahmad Rahman', 'DOC002', 'Cardiology', 'ahmad.rahman@contextmd.com', '$2b$10$example_hash_2'),
 ('550e8400-e29b-41d4-a716-446655440003', 'Dr. Li Wei Ming', 'DOC003', 'Pediatrics', 'li.weiming@contextmd.com', '$2b$10$example_hash_3');

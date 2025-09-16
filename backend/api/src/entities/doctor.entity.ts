@@ -18,9 +18,6 @@ export class Doctor {
   @Column({ unique: true })
   email!: string;
 
-  @Column()
-  password_hash!: string;
-
   @Column({ default: true })
   is_active!: boolean;
 

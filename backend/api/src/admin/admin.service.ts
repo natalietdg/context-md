@@ -44,7 +44,6 @@ export class AdminService {
               employee_id: 'D1001',
               department: 'General Medicine',
               email: 'sarah.chen@contextmd.com',
-              password_hash: await bcrypt.hash('password123', 10),
               is_active: true,
             });
             doctor = await manager.save(doctor);
