@@ -59,8 +59,8 @@ export class AdminService {
     let doctorUser = await this.userRepo.findOne({ where: { profile_id: doctor.id, profile_type: ProfileType.DOCTOR } });
     if (!doctorUser) {
       doctorUser = this.userRepo.create({
-        email: 'dr.demo@example.com',
-        password_hash: await bcrypt.hash('Password123!', 10),
+        email: 'sarah.chen@contextmd.com',
+        password_hash: await bcrypt.hash('password123', 10),
         profile_id: doctor.id,
         profile_type: ProfileType.DOCTOR,
         is_active: true,
@@ -72,8 +72,8 @@ export class AdminService {
     let patientUser = await this.userRepo.findOne({ where: { profile_id: patient.id, profile_type: ProfileType.PATIENT } });
     if (!patientUser) {
       patientUser = this.userRepo.create({
-        email: 'jane.patient@example.com',
-        password_hash: await bcrypt.hash('Password123!', 10),
+        email: 'john.tan@email.com',
+        password_hash: await bcrypt.hash('password123', 10),
         profile_id: patient.id,
         profile_type: ProfileType.PATIENT,
         is_active: true,
