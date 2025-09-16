@@ -142,7 +142,7 @@ class AudioProcessingPipeline:
     
     def transcribe_audio(self, audio_path: str, 
                         language: str = "auto",
-                        model_size: str = "large-v2",
+                        model_size: str = "based",
                         min_speakers: Optional[int] = None,
                         max_speakers: Optional[int] = None) -> Tuple[str, str]:
         """
@@ -378,7 +378,7 @@ Examples:
   python pipeline.py s3://bucket/consultation.m4a
   
   # Process local audio with specific settings
-  python pipeline.py audio.wav --language en --model-size medium
+  python pipeline.py audio.wav --language en --model-size base
   
   # With speaker diarization
   python pipeline.py audio.m4a --min-speakers 2 --max-speakers 4
@@ -420,7 +420,7 @@ Environment Variables:
     parser.add_argument(
         '--model-size', '-m',
         choices=['tiny', 'base', 'small', 'medium', 'large-v1', 'large-v2', 'large-v3'],
-        default='large-v2',
+        default='base',
         help='WhisperX model size (default: large-v2)'
     )
     

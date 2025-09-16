@@ -17,7 +17,7 @@ The `pipeline.py` script provides a unified interface that sequentially processe
 
 ```bash
 # Process S3 audio file
-python pipeline.py s3://your-bucket/consultation.m4a
+python pipeline.py s3://your-bucket/consultation.m4a --model-size base
 
 # Process local audio file
 python pipeline.py /path/to/audio.wav
