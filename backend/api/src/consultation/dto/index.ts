@@ -2,13 +2,13 @@ import { IsUUID, IsString, IsOptional, IsEnum, IsDateString, IsBoolean } from 'c
 import { ProcessingStatus } from '../../entities';
 
 export class CreateConsultationDto {
-  @IsUUID()
+
   patient_id: string;
 
-  @IsUUID()
+
   doctor_id: string;
 
-  @IsUUID()
+
   @IsOptional()
   consent_id?: string;
 
@@ -32,7 +32,7 @@ export class UpdateConsultationDto {
 }
 
 export class LockConsultationDto {
-  @IsUUID()
+
   consultation_id: string;
 
   @IsBoolean()

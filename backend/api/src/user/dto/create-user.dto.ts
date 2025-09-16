@@ -9,7 +9,7 @@ export class CreateUserDto {
   @MinLength(8)
   password: string;
 
-  @IsUUID()
+
   profile_id: string;
 
   @IsEnum(ProfileType)

@@ -1,23 +1,24 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, BeforeInsert, BeforeUpdate } from 'typeorm';
+import { Entity, PrimaryColumn, Column, CreateDateColumn, UpdateDateColumn, BeforeInsert, BeforeUpdate } from 'typeorm';
 import * as crypto from 'crypto';
+// nanoid import removed to avoid ESM require issues under ts-node-dev
 
 export enum ProfileType {
   DOCTOR = 'doctor',
   PATIENT = 'patient'
 }
 
-@Entity('users')
+@Entity('user')
 export class User {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn('varchar', { length: 50 })
   id!: string;
 
-  @Column({ type: 'varchar', unique: true })
+  @Column({ name: 'email', type: 'varchar', unique: true })
   private _email!: string;
 
-  @Column({ type: 'varchar' })
+  @Column({ name: 'password_hash', type: 'varchar' })
   private _password_hash!: string;
 
-  @Column('uuid')
+  @Column('varchar')
   profile_id!: string;
 
   @Column({
@@ -94,11 +95,16 @@ export class User {
   @BeforeInsert()
   generateIdWithPrefix() {
     if (!this.id) {
-      // Generate new UUID and add prefix
-      const { v4: uuidv4 } = require('uuid');
-      this.id = 'U_' + uuidv4();
-    } else if (!this.id.startsWith('U_')) {
-      this.id = 'U_' + this.id;
+      // Generate new VARCHAR and add prefix
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      const bytes = crypto.randomBytes(12);
+      let idPart = '';
+      for (let i = 0; i < bytes.length; i++) {
+        idPart += chars[bytes[i] % chars.length];
+      }
+      this.id = 'USER' + idPart;
+    } else if (!this.id.startsWith('USER')) {
+      this.id = 'USER' + this.id;
     }
   }
 

@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn, BeforeInsert, BeforeUpdate } from 'typeorm';
+import { Entity, PrimaryColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn, BeforeInsert, BeforeUpdate } from 'typeorm';
+import { randomBytes } from 'crypto';
 
 export enum ConsentStatus {
   ACTIVE = 'active',
@@ -8,13 +9,13 @@ export enum ConsentStatus {
 
 @Entity('consent')
 export class Consent {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn('varchar', { length: 50 })
   id!: string;
 
-  @Column('uuid')
+  @Column('varchar')
   patient_id!: string;
 
-  @Column('uuid')
+  @Column('varchar')
   doctor_id!: string;
 
   @Column()
@@ -66,11 +67,16 @@ export class Consent {
   @BeforeInsert()
   generateIdWithPrefix() {
     if (!this.id) {
-      // Generate new UUID and add prefix
-      const { v4: uuidv4 } = require('uuid');
-      this.id = 'CON_' + uuidv4();
-    } else if (!this.id.startsWith('CON_')) {
-      this.id = 'CON_' + this.id;
+      // Generate new VARCHAR and add prefix
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      const bytes = randomBytes(12);
+      let idPart = '';
+      for (let i = 0; i < bytes.length; i++) {
+        idPart += chars[bytes[i] % chars.length];
+      }
+      this.id = 'CNST' + idPart;
+    } else if (!this.id.startsWith('CNST')) {
+      this.id = 'CNST' + this.id;
     }
   }
 }

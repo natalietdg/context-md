@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, BeforeInsert, BeforeUpdate } from 'typeorm';
+import { Entity, PrimaryColumn, Column, CreateDateColumn, BeforeInsert, BeforeUpdate } from 'typeorm';
+import { randomBytes } from 'crypto';
 
 export enum UserType {
   DOCTOR = 'doctor',
@@ -9,10 +10,10 @@ export enum UserType {
 
 @Entity('audit_log')
 export class AuditLog {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn('varchar', { length: 50 })
   id: string;
 
-  @Column('uuid', { nullable: true })
+  @Column('varchar', { nullable: true })
   user_id: string;
 
   @Column({
@@ -28,7 +29,7 @@ export class AuditLog {
   @Column({ nullable: true })
   resource_type: string;
 
-  @Column('uuid', { nullable: true })
+  @Column('varchar', { nullable: true })
   resource_id: string;
 
   @Column('jsonb', { nullable: true })
@@ -50,11 +51,16 @@ export class AuditLog {
   @BeforeInsert()
   generateIdWithPrefix() {
     if (!this.id) {
-      // Generate new UUID and add prefix
-      const { v4: uuidv4 } = require('uuid');
-      this.id = 'AL_' + uuidv4();
-    } else if (!this.id.startsWith('AL_')) {
-      this.id = 'AL_' + this.id;
+      // Generate new VARCHAR and add prefix
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      const bytes = randomBytes(12);
+      let idPart = '';
+      for (let i = 0; i < bytes.length; i++) {
+        idPart += chars[bytes[i] % chars.length];
+      }
+      this.id = 'AULG' + idPart;
+    } else if (!this.id.startsWith('AULG')) {
+      this.id = 'AULG' + this.id;
     }
   }
 }

@@ -1,8 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, BeforeInsert, BeforeUpdate } from 'typeorm';
+import { Entity, PrimaryColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, BeforeInsert, BeforeUpdate } from 'typeorm';
+import { randomBytes } from 'crypto';
 
 @Entity('patient')
 export class Patient {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn('varchar', { length: 50 })
   id!: string;
 
   @Column()
@@ -48,11 +49,16 @@ export class Patient {
   @BeforeInsert()
   generateIdWithPrefix() {
     if (!this.id) {
-      // Generate new UUID and add prefix
-      const { v4: uuidv4 } = require('uuid');
-      this.id = 'P_' + uuidv4();
-    } else if (!this.id.startsWith('P_')) {
-      this.id = 'P_' + this.id;
+      // Generate new VARCHAR and add prefix
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      const bytes = randomBytes(12);
+      let idPart = '';
+      for (let i = 0; i < bytes.length; i++) {
+        idPart += chars[bytes[i] % chars.length];
+      }
+      this.id = 'PTNT' + idPart;
+    } else if (!this.id.startsWith('PTNT')) {
+      this.id = 'PTNT' + this.id;
     }
   }
 }

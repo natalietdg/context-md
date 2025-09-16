@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { AdminService } from './admin.service';
 
 @Controller('admin')
@@ -28,5 +28,12 @@ export class AdminController {
   @HttpCode(HttpStatus.OK)
   async insertSqlUsers(@Body() body: { records: Array<{ email: string; password?: string; password_hash?: string; role: string }> }) {
     return this.adminService.insertSqlUsers(body);
+  }
+
+  // Diagnostics: show table/column types to confirm DB schema in use
+  @Get('db/diagnose')
+  @HttpCode(HttpStatus.OK)
+  async diagnose() {
+    return this.adminService.diagnoseSchema();
   }
 }

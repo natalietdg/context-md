@@ -5,6 +5,7 @@ import { Doctor } from '../entities/doctor.entity';
 import { Patient } from '../entities/patient.entity';
 import { User, ProfileType } from '../entities';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 
 @Injectable()
 export class AdminService {
@@ -32,11 +33,11 @@ export class AdminService {
     let doctor = await this.doctorRepo.findOne({ where: { employee_id: 'D1001' } });
     if (!doctor) {
       doctor = this.doctorRepo.create({
-        name: 'Dr. Demo',
+        name: 'Dr. Sarah Chen',
         employee_id: 'D1001',
         department: 'General Medicine',
-        email: 'dr.demo@example.com',
-        password_hash: await bcrypt.hash('Password123!', 10),
+        email: 'sarah.chen@contextmd.com',
+        password_hash: await bcrypt.hash('password123', 10),
         is_active: true,
       });
       doctor = await this.doctorRepo.save(doctor);
@@ -46,10 +47,10 @@ export class AdminService {
     let patient = await this.patientRepo.findOne({ where: { nric: 'S1234567A' } });
     if (!patient) {
       patient = this.patientRepo.create({
-        name: 'Jane Patient',
+        name: 'John Tan',
         nric: 'S1234567A',
         phone: '+65 80000000',
-        email: 'jane.patient@example.com',
+        email: 'john.tan@email.com',
         is_active: true,
       });
       patient = await this.patientRepo.save(patient);
@@ -58,27 +59,25 @@ export class AdminService {
     // Upsert a User for the Doctor
     let doctorUser = await this.userRepo.findOne({ where: { profile_id: doctor.id, profile_type: ProfileType.DOCTOR } });
     if (!doctorUser) {
-      doctorUser = this.userRepo.create({
-        email: 'sarah.chen@contextmd.com',
-        password_hash: await bcrypt.hash('password123', 10),
-        profile_id: doctor.id,
-        profile_type: ProfileType.DOCTOR,
-        is_active: true,
-      });
-      doctorUser = await this.userRepo.save(doctorUser);
+      const u = this.userRepo.create();
+      u.email = 'sarah.chen@contextmd.com'; // use setter to ensure encryption
+      u.password_hash = await bcrypt.hash('password123', 10); // use setter to ensure encryption
+      u.profile_id = doctor.id;
+      u.profile_type = ProfileType.DOCTOR;
+      u.is_active = true;
+      doctorUser = await this.userRepo.save(u);
     }
 
     // Upsert a User for the Patient
     let patientUser = await this.userRepo.findOne({ where: { profile_id: patient.id, profile_type: ProfileType.PATIENT } });
     if (!patientUser) {
-      patientUser = this.userRepo.create({
-        email: 'john.tan@email.com',
-        password_hash: await bcrypt.hash('password123', 10),
-        profile_id: patient.id,
-        profile_type: ProfileType.PATIENT,
-        is_active: true,
-      });
-      patientUser = await this.userRepo.save(patientUser);
+      const u2 = this.userRepo.create();
+      u2.email = 'john.tan@email.com'; // use setter to ensure encryption
+      u2.password_hash = await bcrypt.hash('password123', 10); // use setter to ensure encryption
+      u2.profile_id = patient.id;
+      u2.profile_type = ProfileType.PATIENT;
+      u2.is_active = true;
+      patientUser = await this.userRepo.save(u2);
     }
 
     return {
@@ -128,7 +127,7 @@ export class AdminService {
    * Raw SQL insert into the SQL-defined `users` table (id, email, password_hash, role, created_at, updated_at)
    * WARNING: This bypasses the TypeORM `User` entity encryption scheme. Do not read these rows via the entity.
    */
-  async insertSqlUsers(payload: { records: Array<{ email: string; password?: string; password_hash?: string; role: string }> }) {
+  async insertSqlUsers(payload: { records: Array<{ id?: string; email: string; password?: string; password_hash?: string; role: string }> }) {
     const roles = new Set(['doctor', 'patient', 'admin', 'superadmin']);
     const records = payload?.records || [];
     if (!Array.isArray(records) || records.length === 0) {
@@ -141,20 +140,27 @@ export class AdminService {
       if (!r.password && !r.password_hash) throw new Error(`Record #${idx + 1}: password or password_hash is required`);
       if (!r.role || !roles.has(r.role)) throw new Error(`Record #${idx + 1}: role must be one of ${Array.from(roles).join(', ')}`);
       const password_hash = r.password_hash ?? await bcrypt.hash(r.password!, 10);
-      return { email: r.email, password_hash, role: r.role };
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      const bytes = randomBytes(12);
+      let idPart = '';
+      for (let i = 0; i < bytes.length; i++) {
+        idPart += chars[bytes[i] % chars.length];
+      }
+      const id = r.id ?? `USER${idPart}`;
+      return { id, email: r.email, password_hash, role: r.role };
     }));
 
     // Build a parameterized multi-row UPSERT
     const valuesSql: string[] = [];
     const params: any[] = [];
     normalized.forEach((row, i) => {
-      const base = i * 3;
-      valuesSql.push(`($${base + 1}, $${base + 2}, $${base + 3})`);
-      params.push(row.email, row.password_hash, row.role);
+      const base = i * 4;
+      valuesSql.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4})`);
+      params.push(row.id, row.email, row.password_hash, row.role);
     });
 
     const sql = `
-      INSERT INTO users (email, password_hash, role)
+      INSERT INTO users (id, email, password_hash, role)
       VALUES ${valuesSql.join(', ')}
       ON CONFLICT (email) DO UPDATE
         SET password_hash = EXCLUDED.password_hash,
@@ -165,5 +171,21 @@ export class AdminService {
 
     const rows = await this.dataSource.query(sql, params);
     return { ok: true, count: rows.length, rows };
+  }
+
+  async diagnoseSchema() {
+    const meta = await this.dataSource.query(
+      `select current_database() as database, current_schema() as schema, version()`
+    );
+
+    const columns = await this.dataSource.query(
+      `select table_name, column_name, data_type
+       from information_schema.columns
+       where table_schema = 'public'
+         and table_name in ('doctor','patient','consultation','consent','report','appointment','audit_log','consent_replay_log','user','users')
+       order by table_name, column_name`
+    );
+
+    return { ok: true, meta: meta?.[0] ?? null, columns };
   }
 }

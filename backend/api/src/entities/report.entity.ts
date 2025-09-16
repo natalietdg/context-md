@@ -1,12 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, BeforeInsert, BeforeUpdate } from 'typeorm';
+import { Entity, PrimaryColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, BeforeInsert, BeforeUpdate } from 'typeorm';
 import { Consultation } from './consultation.entity';
+import { randomBytes } from 'crypto';
 
 @Entity('report')
 export class Report {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn('varchar', { length: 50 })
   id!: string;
 
-  @Column('uuid')
+  @Column('varchar')
   consultation_id!: string;
 
   @Column('jsonb')
@@ -47,11 +48,16 @@ export class Report {
   @BeforeInsert()
   generateIdWithPrefix() {
     if (!this.id) {
-      // Generate new UUID and add prefix
-      const { v4: uuidv4 } = require('uuid');
-      this.id = 'R_' + uuidv4();
-    } else if (!this.id.startsWith('R_')) {
-      this.id = 'R_' + this.id;
+      // Generate new VARCHAR and add prefix
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      const bytes = randomBytes(12);
+      let idPart = '';
+      for (let i = 0; i < bytes.length; i++) {
+        idPart += chars[bytes[i] % chars.length];
+      }
+      this.id = 'RPRT' + idPart;
+    } else if (!this.id.startsWith('RPRT')) {
+      this.id = 'RPRT' + this.id;
     }
   }
 }

@@ -1,7 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn, BeforeInsert, BeforeUpdate } from 'typeorm';
+import { Entity, PrimaryColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn, BeforeInsert, BeforeUpdate } from 'typeorm';
 import { Doctor } from './doctor.entity';
 import { Patient } from './patient.entity';
 import { Consent } from './consent.entity';
+import { randomBytes } from 'crypto';
 
 
 export enum ProcessingStatus {
@@ -13,7 +14,7 @@ export enum ProcessingStatus {
 
 @Entity('consultation')
 export class Consultation {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn('varchar', { length: 50 })
   id!: string;
 
   @Column()
@@ -84,11 +85,16 @@ export class Consultation {
   @BeforeInsert()
   generateIdWithPrefix() {
     if (!this.id) {
-      // Generate new UUID and add prefix
-      const { v4: uuidv4 } = require('uuid');
-      this.id = 'C_' + uuidv4();
-    } else if (!this.id.startsWith('C_')) {
-      this.id = 'C_' + this.id;
+      // Generate new VARCHAR and add prefix
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      const bytes = randomBytes(12);
+      let idPart = '';
+      for (let i = 0; i < bytes.length; i++) {
+        idPart += chars[bytes[i] % chars.length];
+      }
+      this.id = 'COXN' + idPart;
+    } else if (!this.id.startsWith('COXN')) {
+      this.id = 'COXN' + this.id;
     }
   }
 }

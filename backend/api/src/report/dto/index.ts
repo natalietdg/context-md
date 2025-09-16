@@ -1,7 +1,7 @@
 import { IsUUID, IsString, IsOptional, IsEnum, IsNumber, Min, Max } from 'class-validator';
 
 export class CreateReportDto {
-  @IsUUID()
+
   consultation_id: string;
 
   @IsOptional()

@@ -2,10 +2,10 @@ import { IsUUID, IsString, IsOptional, IsEnum, IsDateString } from 'class-valida
 import { ReplayRole } from '../../entities';
 
 export class CreateConsentDto {
-  @IsUUID()
+
   patient_id: string;
 
-  @IsUUID()
+
   doctor_id: string;
 
   @IsOptional()
@@ -18,7 +18,7 @@ export class CreateConsentDto {
 }
 
 export class ReplayConsentDto {
-  @IsUUID()
+
   consent_id: string;
 
   @IsEnum(ReplayRole)
