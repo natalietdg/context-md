@@ -31,7 +31,7 @@ CREATE OR REPLACE FUNCTION add_id_prefix()
 RETURNS TRIGGER AS $$
 BEGIN
     CASE TG_TABLE_NAME
-        WHEN '"user"' THEN
+        WHEN 'user' THEN
             IF NEW.id IS NOT NULL AND NEW.id NOT LIKE 'USER%' THEN
                 NEW.id := 'USER' || NEW.id;
             END IF;
@@ -231,4 +231,17 @@ CREATE TRIGGER prefix_patient BEFORE INSERT OR UPDATE ON patient
 CREATE TRIGGER prefix_consent BEFORE INSERT OR UPDATE ON consent
     FOR EACH ROW EXECUTE FUNCTION add_id_prefix();
 
-CREATE TRIGGER prefix_consultation BEFORE INSERT_
+CREATE TRIGGER prefix_consultation BEFORE INSERT OR UPDATE ON consultation
+    FOR EACH ROW EXECUTE FUNCTION add_id_prefix();
+
+CREATE TRIGGER prefix_report BEFORE INSERT OR UPDATE ON report
+    FOR EACH ROW EXECUTE FUNCTION add_id_prefix();
+
+CREATE TRIGGER prefix_appointment BEFORE INSERT OR UPDATE ON appointment
+    FOR EACH ROW EXECUTE FUNCTION add_id_prefix();
+
+CREATE TRIGGER prefix_audit_log BEFORE INSERT OR UPDATE ON audit_log
+    FOR EACH ROW EXECUTE FUNCTION add_id_prefix();
+
+CREATE TRIGGER prefix_consent_replay_log BEFORE INSERT OR UPDATE ON consent_replay_log
+    FOR EACH ROW EXECUTE FUNCTION add_id_prefix();

@@ -10,10 +10,12 @@ interface User {
   department?: string;
 }
 
+type LoginResponse = { access_token: string; user: User };
+
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (email: string, password: string, role: 'doctor' | 'patient') => Promise<void>;
+  login: (email: string, password: string, role: 'doctor' | 'patient') => Promise<LoginResponse>;
   logout: () => void;
   isLoading: boolean;
   isAuthenticated: boolean;
@@ -71,17 +73,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string, role: 'doctor' | 'patient') => {
+  const login = async (email: string, password: string, role: 'doctor' | 'patient'): Promise<LoginResponse> => {
     try {
       const response = await apiService.login(email, password, role);
       const { access_token, user: userData } = response;
 
       setToken(access_token);
       setUser(userData);
+      
 
       // Store in localStorage
       localStorage.setItem('contextmd_token', access_token);
       localStorage.setItem('contextmd_user', JSON.stringify(userData));
+      return { access_token, user: userData };
     } catch (error) {
       throw error;
     }

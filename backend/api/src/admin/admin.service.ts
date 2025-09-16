@@ -16,7 +16,7 @@ export class AdminService {
     @InjectRepository(Doctor) private readonly doctorRepo: Repository<Doctor>,
     @InjectRepository(Patient) private readonly patientRepo: Repository<Patient>,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
-  ) {}
+  ) { }
 
   async syncSchema(options?: { drop?: boolean }) {
     const drop = !!options?.drop;
@@ -29,63 +29,89 @@ export class AdminService {
   }
 
   async seedBasic() {
-    // Upsert a Doctor
-    let doctor = await this.doctorRepo.findOne({ where: { employee_id: 'D1001' } });
-    if (!doctor) {
-      doctor = this.doctorRepo.create({
-        name: 'Dr. Sarah Chen',
-        employee_id: 'D1001',
-        department: 'General Medicine',
-        email: 'sarah.chen@contextmd.com',
-        password_hash: await bcrypt.hash('password123', 10),
-        is_active: true,
-      });
-      doctor = await this.doctorRepo.save(doctor);
-    }
+    // Use transaction to ensure all-or-nothing persistence
+    return await this.dataSource.transaction(async manager => {
 
-    // Upsert a Patient
-    let patient = await this.patientRepo.findOne({ where: { nric: 'S1234567A' } });
-    if (!patient) {
-      patient = this.patientRepo.create({
-        name: 'John Tan',
-        nric: 'S1234567A',
-        phone: '+65 80000000',
-        email: 'john.tan@email.com',
-        is_active: true,
-      });
-      patient = await this.patientRepo.save(patient);
-    }
+      try {
 
-    // Upsert a User for the Doctor
-    let doctorUser = await this.userRepo.findOne({ where: { profile_id: doctor.id, profile_type: ProfileType.DOCTOR } });
-    if (!doctorUser) {
-      const u = this.userRepo.create();
-      u.email = 'sarah.chen@contextmd.com'; // use setter to ensure encryption
-      u.password_hash = await bcrypt.hash('password123', 10); // use setter to ensure encryption
-      u.profile_id = doctor.id;
-      u.profile_type = ProfileType.DOCTOR;
-      u.is_active = true;
-      doctorUser = await this.userRepo.save(u);
-    }
+        // Upsert a Doctor
+        let doctor = await manager.findOne(Doctor, { where: { employee_id: 'D1001' } });
 
-    // Upsert a User for the Patient
-    let patientUser = await this.userRepo.findOne({ where: { profile_id: patient.id, profile_type: ProfileType.PATIENT } });
-    if (!patientUser) {
-      const u2 = this.userRepo.create();
-      u2.email = 'john.tan@email.com'; // use setter to ensure encryption
-      u2.password_hash = await bcrypt.hash('password123', 10); // use setter to ensure encryption
-      u2.profile_id = patient.id;
-      u2.profile_type = ProfileType.PATIENT;
-      u2.is_active = true;
-      patientUser = await this.userRepo.save(u2);
-    }
+        if (!doctor) {
+          try {
+            doctor = manager.create(Doctor, {
+              name: 'Dr. Sarah Chen',
+              employee_id: 'D1001',
+              department: 'General Medicine',
+              email: 'sarah.chen@contextmd.com',
+              password_hash: await bcrypt.hash('password123', 10),
+              is_active: true,
+            });
+            doctor = await manager.save(doctor);
+            console.log('Doctor seeded:', doctor);
+          } catch (error) {
+            console.error('Error creating doctor:', error);
+            throw error;
+          }
+        }
 
-    return {
-      ok: true,
-      doctor: { id: doctor.id, email: doctor.email },
-      patient: { id: patient.id, email: patient.email },
-      users: [doctorUser.id, patientUser.id],
-    };
+        // Upsert a Patient
+        let patient = await manager.findOne(Patient, { where: { nric: 'S1234567A' } });
+        if (!patient) {
+          patient = manager.create(Patient, {
+            name: 'John Tan',
+            nric: 'S1234567A',
+            phone: '+65 80000000',
+            email: 'john.tan@email.com',
+            is_active: true,
+          });
+          patient = await manager.save(patient);
+        }
+
+        // Upsert a User for the Doctor
+        let doctorUser = await manager.findOne(User, { where: { profile_id: doctor.id, profile_type: ProfileType.DOCTOR } });
+        if (!doctorUser) {
+          const u = manager.create(User, {
+            profile_id: doctor.id,
+            profile_type: ProfileType.DOCTOR,
+            is_active: true,
+          });
+          // Set email and password via setters to trigger encryption
+          u.email = 'sarah.chen@contextmd.com';
+          u.password_hash = await bcrypt.hash('password123', 10);
+
+          doctorUser = await manager.save(u);
+
+        }
+
+        // Upsert a User for the Patient
+        let patientUser = await manager.findOne(User, { where: { profile_id: patient.id, profile_type: ProfileType.PATIENT } });
+        if (!patientUser) {
+          const u = manager.create(User, {
+            profile_id: patient.id,
+            profile_type: ProfileType.PATIENT,
+            is_active: true,
+          });
+          // Set email and password via setters to trigger encryption
+          u.email = 'john.tan@email.com';
+          u.password_hash = await bcrypt.hash('password123', 10);
+          patientUser = await manager.save(u);
+        }
+
+        return {
+          doctor: { id: doctor.id, name: doctor.name },
+          patient: { id: patient.id, name: patient.name },
+          users: {
+            doctor: { id: doctorUser.id, email: doctorUser.email },
+            patient: { id: patientUser.id, email: patientUser.email },
+          },
+        };
+      }
+      catch (error) {
+        console.error(error);
+        throw error;
+      }
+    });
   }
 
   async insertRecords(body: { entity: 'doctor' | 'patient' | 'user'; records: any[] }) {

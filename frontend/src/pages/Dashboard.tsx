@@ -69,7 +69,9 @@ const Dashboard: React.FC = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    console.log('[Dashboard] useEffect user =', user);
     if (user?.id) {
+      console.log('[Dashboard] calling loadDashboardData for doctorId =', user.id);
       loadDashboardData();
     }
   }, [user]);
@@ -77,7 +79,9 @@ const Dashboard: React.FC = () => {
   const loadDashboardData = async () => {
     try {
       setIsLoading(true);
-      const data = await apiService.getDoctorDashboard(user!.id);
+      console.log('[Dashboard] fetching GET /dashboard/doctor');
+      const data = await apiService.getDoctorDashboard(user?.id ?? '');
+      console.log('[Dashboard] dashboardData received', data);
       setDashboardData(data);
     } catch (err: any) {
       setError('Failed to load dashboard data');

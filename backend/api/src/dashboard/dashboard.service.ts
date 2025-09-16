@@ -106,15 +106,12 @@ export class DashboardService {
     });
 
     // Today's appointments
-    const todayAppointments = await this.appointmentRepository.count({
-      where: {
-        doctor_id: doctorId,
-        scheduled_at: {
-          $gte: startOfDay,
-          $lt: endOfDay,
-        } as any,
-      },
-    });
+    const todayAppointments = await this.appointmentRepository
+      .createQueryBuilder('appointment')
+      .where('appointment.doctor_id = :doctorId', { doctorId })
+      .andWhere('appointment.scheduled_at >= :startOfDay', { startOfDay })
+      .andWhere('appointment.scheduled_at < :endOfDay', { endOfDay })
+      .getCount();
 
     // Completed consultations
     const completedConsultations = await this.consultationRepository.count({
@@ -151,18 +148,15 @@ export class DashboardService {
     startDate: Date,
     endDate: Date
   ): Promise<UpcomingAppointment[]> {
-    const appointments = await this.appointmentRepository.find({
-      where: {
-        doctor_id: doctorId,
-        scheduled_at: {
-          $gte: startDate,
-          $lt: endDate,
-        } as any,
-        status: AppointmentStatus.SCHEDULED,
-      },
-      relations: ['patient'],
-      order: { scheduled_at: 'ASC' },
-    });
+    const appointments = await this.appointmentRepository
+      .createQueryBuilder('appointment')
+      .leftJoinAndSelect('appointment.patient', 'patient')
+      .where('appointment.doctor_id = :doctorId', { doctorId })
+      .andWhere('appointment.scheduled_at >= :startDate', { startDate })
+      .andWhere('appointment.scheduled_at < :endDate', { endDate })
+      .andWhere('appointment.status = :status', { status: AppointmentStatus.SCHEDULED })
+      .orderBy('appointment.scheduled_at', 'ASC')
+      .getMany();
 
     const upcomingAppointments: UpcomingAppointment[] = [];
 

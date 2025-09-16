@@ -22,7 +22,8 @@ const Login: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await login(email, password, role);
+      const response = await login(email, password, role);
+
       navigate(role === 'doctor' ? '/dashboard' : '/patient-portal');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed. Please check your credentials.');

@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:4000';
 
 class ApiService {
   private api: AxiosInstance;
@@ -14,12 +14,22 @@ class ApiService {
       },
     });
 
+    // Dev-only: basic request/response logging to verify auth/login flow
+    if (process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.log('[ApiService] Base URL =', API_BASE_URL);
+    }
+
     // Request interceptor to add auth token
     this.api.interceptors.request.use(
       (config) => {
         const token = localStorage.getItem('contextmd_token');
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
+        }
+        if (process.env.NODE_ENV !== 'production') {
+          // eslint-disable-next-line no-console
+          console.log('[ApiService] Request', (config.method || 'GET').toUpperCase(), config.url, config.data);
         }
         return config;
       },
@@ -28,12 +38,22 @@ class ApiService {
 
     // Response interceptor to handle auth errors
     this.api.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        if (process.env.NODE_ENV !== 'production') {
+          // eslint-disable-next-line no-console
+          console.log('[ApiService] Response', response.config.url, response.status, response.data);
+        }
+        return response;
+      },
       (error) => {
+        if (process.env.NODE_ENV !== 'production') {
+          // eslint-disable-next-line no-console
+          console.log('[ApiService] Error', error?.response?.status, error?.response?.data);
+        }
         if (error.response?.status === 401) {
+          // Just clear auth; ProtectedRoute will handle navigation via React Router
           localStorage.removeItem('contextmd_token');
           localStorage.removeItem('contextmd_user');
-          window.location.href = '/login';
         }
         return Promise.reject(error);
       }
@@ -43,6 +63,11 @@ class ApiService {
   // Auth endpoints
   async login(email: string, password: string, role: 'doctor' | 'patient') {
     const response = await this.api.post('/auth/login', { email, password, role });
+
+    if (process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.log('[ApiService] /auth/login data', response.status, response.data);
+    }
     return response.data;
   }
 

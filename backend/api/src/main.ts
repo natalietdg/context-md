@@ -7,6 +7,11 @@ import { json as bodyJson, urlencoded } from 'express';
 
 dotenv.config();
 
+// Debug: Log database connection info
+console.log('DATABASE_HOST:', process.env.DATABASE_HOST);
+console.log('DATABASE_SSL:', process.env.DATABASE_SSL);
+console.log('ENVIRONMENT:', process.env.ENVIRONMENT);
+
 // const ALLOWED_ORIGINS = new Set<string>([
 //   'https://contextmd.netlify.app',
 //   'http://localhost:3000',
@@ -24,11 +29,12 @@ async function bootstrap() {
       if (!origin) return callback(null, true);
       // if (ALLOWED_ORIGINS.has(origin)) return callback(null, true);
       // default allow the production site
+      if( origin === 'http://localhost:3000') return callback(null, true);
       if (origin === 'https://contextmd.netlify.app') return callback(null, true);
       return callback(new Error('Not allowed by CORS'));
     },
-    methods: ['POST', 'OPTIONS'],
-    allowedHeaders: ['authorization', 'x-client-info', 'apikey', 'content-type', 'x-api-key'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['authorization', 'Authorization', 'x-client-info', 'apikey', 'content-type', 'Content-Type', 'x-api-key'],
     credentials: false,
   });
 
