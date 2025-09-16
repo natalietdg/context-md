@@ -1,0 +1,50 @@
+{
+  "languages_detected": ["en"],
+  "turns": [
+    {
+      "turn_id": 1,
+      "speaker": "SPEAKER_01",
+      "text": "Doctor, I've been having chest pain for 2 days, worse when I exercise."
+    },
+    {
+      "turn_id": 2,
+      "speaker": "SPEAKER_00",
+      "text": "Do you have any allergies to medications?"
+    },
+    {
+      "turn_id": 3,
+      "speaker": "SPEAKER_01",
+      "text": "Yes, I'm allergic to penicillin. No other drug allergies."
+    },
+    {
+      "turn_id": 4,
+      "speaker": "SPEAKER_00",
+      "text": "What medications are you currently taking?"
+    },
+    {
+      "turn_id": 5,
+      "speaker": "SPEAKER_01",
+      "text": "I take metformin for diabetes and amlodipine for blood pressure."
+    },
+    {
+      "turn_id": 6,
+      "speaker": "SPEAKER_00",
+      "text": "Any fever, nausea, or shortness of breath?"
+    },
+    {
+      "turn_id": 7,
+      "speaker": "SPEAKER_01",
+      "text": "No fever, no nausea, but I do get short of breath during the chest pain episodes."
+    },
+    {
+      "turn_id": 8,
+      "speaker": "SPEAKER_00",
+      "text": "Based on your symptoms, this sounds like stable angina. I'll prescribe aspirin 100mg daily and schedule a follow-up in 2 weeks."
+    },
+    {
+      "turn_id": 9,
+      "speaker": "SPEAKER_00",
+      "text": "If you experience chest pain at rest or severe shortness of breath, go to the emergency room immediately."
+    }
+  ]
+} 
