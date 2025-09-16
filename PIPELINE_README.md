@@ -17,13 +17,13 @@ The `pipeline.py` script provides a unified interface that sequentially processe
 
 ```bash
 # Process S3 audio file
-python pipeline.py s3://your-bucket/consultation.m4a --model-size base
+python pipeline.py s3://your-bucket/consultation.m4a 
 
 # Process local audio file
 python pipeline.py /path/to/audio.wav
 
-# With specific language and model
-python pipeline.py audio.mp3 --language en --model-size medium
+# With specific language and whisperX model size 
+python pipeline.py audio.mp3 --language en --model-size base
 ```
 
 ### Advanced Usage
@@ -45,7 +45,8 @@ python pipeline.py s3://bucket/audio.m4a --verbose --cache-dir ./my_cache
 python pipeline.py audio.m4a --clinical-model microsoft/DialoGPT-medium
 
 # Use local model for clinical extraction
-python pipeline.py audio.m4a --clinical-model /path/to/local/model
+python pipeline.py audio.m4a --clinical-model /path/to/local/model 
+python pipeline.py s3://english2p1.m4a --clinical-model /Users/estherlow/models/Qwen2.5-3B-Instruct
 ```
 
 ## 📋 Prerequisites
