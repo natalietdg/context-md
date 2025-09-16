@@ -2,8 +2,8 @@
   "segments": [
     {
       "start": 0.031,
-      "end": 7.362,
-      "text": " The pain does change when I stand up when I stand up it feels less of a sharp pain with only when I'm sitting down.",
+      "end": 2.956,
+      "text": " The pain does change when I stand up.",
       "words": [
         {
           "word": "The",
@@ -55,14 +55,22 @@
           "speaker": "SPEAKER_01"
         },
         {
-          "word": "up",
+          "word": "up.",
           "start": 2.855,
-          "end": 2.936,
-          "score": 0.986,
+          "end": 2.956,
+          "score": 0.952,
           "speaker": "SPEAKER_01"
-        },
+        }
+      ],
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 3.056,
+      "end": 7.362,
+      "text": "When I stand up, it feels less of a sharp pain only when I'm sitting down.",
+      "words": [
         {
-          "word": "when",
+          "word": "When",
           "start": 3.056,
           "end": 3.176,
           "score": 0.436,
@@ -83,10 +91,10 @@
           "speaker": "SPEAKER_01"
         },
         {
-          "word": "up",
+          "word": "up,",
           "start": 3.597,
-          "end": 3.677,
-          "score": 0.702,
+          "end": 3.797,
+          "score": 0.645,
           "speaker": "SPEAKER_01"
         },
         {
@@ -136,13 +144,6 @@
           "start": 5.62,
           "end": 5.84,
           "score": 0.846,
-          "speaker": "SPEAKER_01"
-        },
-        {
-          "word": "with",
-          "start": 5.86,
-          "end": 5.94,
-          "score": 0.418,
           "speaker": "SPEAKER_01"
         },
         {
@@ -619,7 +620,7 @@
     {
       "start": 32.96,
       "end": 38.155,
-      "text": "That could definitely contribute to the pain, perhaps try a firmer chair, or add a cushion for better support.",
+      "text": "That could definitely contribute to the pain, perhaps try a firmer chair or add a cushion for better support.",
       "words": [
         {
           "word": "That",
@@ -699,10 +700,10 @@
           "speaker": "SPEAKER_00"
         },
         {
-          "word": "chair,",
+          "word": "chair",
           "start": 35.908,
           "end": 36.149,
-          "score": 0.864,
+          "score": 0.777,
           "speaker": "SPEAKER_00"
         },
         {
@@ -809,14 +810,14 @@
       "speaker": "SPEAKER_01"
     },
     {
-      "word": "up",
+      "word": "up.",
       "start": 2.855,
-      "end": 2.936,
-      "score": 0.986,
+      "end": 2.956,
+      "score": 0.952,
       "speaker": "SPEAKER_01"
     },
     {
-      "word": "when",
+      "word": "When",
       "start": 3.056,
       "end": 3.176,
       "score": 0.436,
@@ -837,10 +838,10 @@
       "speaker": "SPEAKER_01"
     },
     {
-      "word": "up",
+      "word": "up,",
       "start": 3.597,
-      "end": 3.677,
-      "score": 0.702,
+      "end": 3.797,
+      "score": 0.645,
       "speaker": "SPEAKER_01"
     },
     {
@@ -890,13 +891,6 @@
       "start": 5.62,
       "end": 5.84,
       "score": 0.846,
-      "speaker": "SPEAKER_01"
-    },
-    {
-      "word": "with",
-      "start": 5.86,
-      "end": 5.94,
-      "score": 0.418,
       "speaker": "SPEAKER_01"
     },
     {
@@ -1397,10 +1391,10 @@
       "speaker": "SPEAKER_00"
     },
     {
-      "word": "chair,",
+      "word": "chair",
       "start": 35.908,
       "end": 36.149,
-      "score": 0.864,
+      "score": 0.777,
       "speaker": "SPEAKER_00"
     },
     {

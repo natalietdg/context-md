@@ -1,0 +1,29 @@
+{
+  "summary": "Patient reports ongoing headaches lasting 6-24 hours, accompanied by nausea.",
+  "chief_complaint": "Headache with nausea",
+  "symptoms_present": [
+    "nausea"
+  ],
+  "symptoms_negated": [
+    "dizziness",
+    "blurred vision"
+  ],
+  "onset_or_duration": "past two weeks, lasting 6-24 hours",
+  "allergy_substance": [],
+  "meds_current": [
+    "panadol"
+  ],
+  "conditions_past": [],
+  "primary_diagnosis": "migraine",
+  "rx_drug": null,
+  "rx_dose": null,
+  "follow_up": null,
+  "red_flags": [
+    "no improvement with panadol"
+  ],
+  "_metadata": {
+    "source_file": "english_fake2_translated.json",
+    "model_used": "Qwen/Qwen2.5-3B-Instruct",
+    "extraction_method": "llm"
+  }
+}

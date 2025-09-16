@@ -1,0 +1,23 @@
+{
+  "summary": "Patient reports pain changes with posture, soft chair may cause discomfort.",
+  "chief_complaint": "back pain",
+  "symptoms_present": [
+    "sharp pain",
+    "noticeable pain"
+  ],
+  "symptoms_negated": [],
+  "onset_or_duration": null,
+  "allergy_substance": [],
+  "meds_current": [],
+  "conditions_past": [],
+  "primary_diagnosis": "back pain",
+  "rx_drug": null,
+  "rx_dose": null,
+  "follow_up": "try a firmer chair or add a cushion for better support",
+  "red_flags": [],
+  "_metadata": {
+    "source_file": "bm_fake_2p1_translated.json",
+    "model_used": "Qwen/Qwen2.5-3B-Instruct",
+    "extraction_method": "llm"
+  }
+}
