@@ -74,7 +74,7 @@ Set up your `.env` file in the project root:
 # AWS credentials for S3 access
 AWS_ACCESS_KEY_ID=your_aws_access_key
 AWS_SECRET_ACCESS_KEY=your_aws_secret_key
-AWS_DEFAULT_REGION=ap-southeast-1
+AWS_DEFAULT_REGION=ap-northeast-2
 
 # SEA-LION API key for translation
 SEALION_API_KEY=your_sealion_api_key

@@ -12,7 +12,7 @@ Requirements:
 
 Usage:
     python example_usage.py --audio /path/to/audio.m4a
-    python example_usage.py --audio s3://bucket/path/audio.m4a --s3-region ap-southeast-2
+    python example_usage.py --audio s3://bucket/path/audio.m4a --s3-region ap-northeast-2
 
 Output:
     Results are automatically saved to transcript_output/ folder

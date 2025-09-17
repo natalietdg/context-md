@@ -264,8 +264,10 @@ class ApiService {
   }
 
   // Patient endpoints
-  async getPatients() {
-    const response = await this.api.get('/patients');
+  async getPatients(search?: string) {
+    const response = await this.api.get('/patients', {
+      params: search && search.trim() ? { search } : undefined,
+    });
     return response.data;
   }
 

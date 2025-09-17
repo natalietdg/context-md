@@ -119,7 +119,7 @@ echo "📝 Creating example .env file..."
 cat > .env.example << 'EOF'
 # AWS Configuration
 AUDIO_S3_BUCKET=your-audio-bucket-name
-AWS_DEFAULT_REGION=ap-southeast-2
+AWS_DEFAULT_REGION=ap-northeast-2
 
 # HuggingFace Token (required for speaker diarization)
 # Get your token from: https://huggingface.co/settings/tokens

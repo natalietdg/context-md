@@ -153,7 +153,7 @@ def print_next_steps():
     print("")
     print("   # Process S3 audio file")
     print("   python meralion_transcriber/example_usage.py \\")
-    print("     --audio s3://bucket/path/file.m4a --s3-region ap-southeast-2")
+    print("     --audio s3://bucket/path/file.m4a --s3-region ap-northeast-2")
     print("")
     print("   # Results saved to transcript_output/ folder automatically")
     print("\n📖 Documentation: meralion_transcriber/README.md")

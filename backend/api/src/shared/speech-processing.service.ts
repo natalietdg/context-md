@@ -2,6 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import FormData from 'form-data';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+import { spawn } from 'child_process';
 
 export interface TranscriptionResult {
   raw_transcript: string;
@@ -24,15 +28,26 @@ export class SpeechProcessingService {
       // Step 1: Transcribe audio to raw (code-switched) text using MERaLiON/Whisper
       const rawTranscript = await this.transcribeAudio(audioBuffer, language);
 
-      // Step 2: Translate raw transcript to English if needed
-      const englishTranscript = await this.translateToEnglish(rawTranscript.text, language);
+      // Step 2: Translate raw transcript to English if needed (or reuse CLI translation)
+      let englishTranscript: { text: string; confidence: number };
+      if (rawTranscript.english) {
+        englishTranscript = {
+          text: rawTranscript.english,
+          confidence: rawTranscript.english_confidence ?? rawTranscript.confidence ?? 0.8,
+        };
+      } else {
+        englishTranscript = await this.translateToEnglish(
+          rawTranscript.text,
+          rawTranscript.language_detected || language
+        );
+      }
 
       const processingTime = Date.now() - startTime;
 
       return {
         raw_transcript: rawTranscript.text,
         english_transcript: englishTranscript.text,
-        confidence_score: Math.min(rawTranscript.confidence, englishTranscript.confidence),
+        confidence_score: Math.min(rawTranscript.confidence ?? 0.8, englishTranscript.confidence ?? 0.8),
         processing_time_ms: processingTime,
         language_detected: rawTranscript.language_detected,
       };
@@ -40,16 +55,145 @@ export class SpeechProcessingService {
       this.logger.error('Speech processing failed:', error);
       throw new Error(`Speech processing failed: ${error?.message}`);
     }
+  
+  }
+
+  // --- CLI fallback helpers ---
+  private resolveRepoRoot(): string {
+    // Try current working directory first (root when running start:prod)
+    const cwd = process.cwd();
+    if (fs.existsSync(path.join(cwd, 'pipeline.py'))) return cwd;
+    // If running from backend/api, go up two levels
+    const upTwo = path.resolve(cwd, '..', '..');
+    if (fs.existsSync(path.join(upTwo, 'pipeline.py'))) return upTwo;
+    // As a last resort, use relative to compiled dist directory
+    const fromDist = path.resolve(__dirname, '..', '..', '..', '..');
+    if (fs.existsSync(path.join(fromDist, 'pipeline.py'))) return fromDist;
+    return cwd; // fallback to cwd
+  }
+
+  private resolvePipelinePath(repoRoot: string): string {
+    const candidate = path.join(repoRoot, 'pipeline.py');
+    return candidate;
+  }
+
+  private async runPipelineCli(audioBuffer: Buffer): Promise<TranscriptionResult> {
+    const start = Date.now();
+    // Write audio to a temp file
+    const tmpBase = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'ctxmd-'));
+    const audioPath = path.join(tmpBase, `audio_${Date.now()}.wav`);
+    await fs.promises.writeFile(audioPath, audioBuffer);
+
+    const repoRoot = this.resolveRepoRoot();
+    const pipelinePath = this.resolvePipelinePath(repoRoot);
+    const pythonBin = process.env.PYTHON_BIN || 'python3';
+
+    // Run pipeline with translation but skip clinical extraction for speed/cost
+    await new Promise<void>((resolve, reject) => {
+      const args = [pipelinePath, audioPath, '--skip-clinical'];
+      const child = spawn(pythonBin, args, { cwd: repoRoot, env: process.env });
+      let stderr = '';
+      child.stderr.on('data', (d) => {
+        stderr += d.toString();
+        try { this.logger.debug(`[pipeline] ${d.toString().trim()}`); } catch {}
+      });
+      child.on('close', (code) => {
+        if (code === 0) return resolve();
+        reject(new Error(`pipeline.py exited with code ${code}: ${stderr}`));
+      });
+    });
+
+    // Parse latest outputs created after 'start'
+    const leanDir = path.join(repoRoot, 'outputs', '01_transcripts_lean');
+    const translatedDir = path.join(repoRoot, 'outputs', '02_translated');
+
+    const pickLatestAfter = async (dir: string): Promise<string | null> => {
+      try {
+        const files = await fs.promises.readdir(dir);
+        const jsons = files.filter(f => f.endsWith('.json'));
+        let best: { file: string; mtime: number } | null = null;
+        for (const f of jsons) {
+          const p = path.join(dir, f);
+          const st = await fs.promises.stat(p);
+          const mt = st.mtimeMs;
+          if (mt >= start && (!best || mt > best.mtime)) best = { file: p, mtime: mt };
+        }
+        return best ? best.file : null;
+      } catch { return null; }
+    };
+
+    const leanFile = await pickLatestAfter(leanDir);
+    const translatedFile = await pickLatestAfter(translatedDir);
+
+    let rawTranscript = '';
+    let englishTranscript = '';
+    let detectedLanguage: string | undefined = undefined;
+
+    if (leanFile) {
+      try {
+        const data = JSON.parse(await fs.promises.readFile(leanFile, 'utf-8'));
+        if (Array.isArray(data?.turns)) {
+          rawTranscript = data.turns.map((t: any) => (t?.text || '')).join(' ').trim();
+        } else if (typeof data?.text === 'string') {
+          rawTranscript = data.text;
+        }
+        if (Array.isArray(data?.languages_detected) && data.languages_detected.length > 0) {
+          detectedLanguage = data.languages_detected[0];
+        }
+      } catch (e) {
+        this.logger.warn(`Failed to parse lean transcript ${leanFile}: ${String(e)}`);
+      }
+    }
+
+    if (translatedFile) {
+      try {
+        const data = JSON.parse(await fs.promises.readFile(translatedFile, 'utf-8'));
+        if (Array.isArray(data?.turns)) {
+          englishTranscript = data.turns.map((t: any) => (t?.text || '')).join(' ').trim();
+        } else if (typeof data?.text === 'string') {
+          englishTranscript = data.text;
+        }
+      } catch (e) {
+        this.logger.warn(`Failed to parse translated transcript ${translatedFile}: ${String(e)}`);
+      }
+    }
+
+    // Cleanup temp
+    try { await fs.promises.unlink(audioPath); await fs.promises.rmdir(tmpBase); } catch {}
+
+    const elapsed = Date.now() - start;
+    return {
+      raw_transcript: rawTranscript || '[Transcription empty]',
+      english_transcript: englishTranscript || rawTranscript || '',
+      confidence_score: englishTranscript ? 0.9 : 0.8,
+      processing_time_ms: elapsed,
+      language_detected: detectedLanguage,
+    };
   }
 
   private async transcribeAudio(audioBuffer: Buffer, language: string): Promise<{
     text: string;
     confidence: number;
     language_detected: string;
+    english?: string;
+    english_confidence?: number;
   }> {
     try {
-      // Use existing WhisperX integration or MERaLiON API
-      const whisperXEndpoint = process.env.WHISPERX_ENDPOINT || 'http://localhost:8000/transcribe';
+      const whisperXEndpoint = process.env.WHISPERX_ENDPOINT;
+
+      // CLI fallback: if no endpoint configured or explicitly set to 'cli'
+      if (!whisperXEndpoint || whisperXEndpoint.toLowerCase() === 'cli') {
+        const cliResult = await this.runPipelineCli(audioBuffer);
+        return {
+          text: cliResult.raw_transcript,
+          confidence: 0.8,
+          language_detected: cliResult.language_detected || language,
+          english: cliResult.english_transcript,
+          english_confidence: 0.9,
+        };
+      }
+
+      // HTTP mode: Use WhisperX service
       
       const formData = new FormData();
       formData.append('audio', audioBuffer, {

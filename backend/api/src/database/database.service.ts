@@ -18,7 +18,7 @@ interface DatabaseCredentials {
 export class DatabaseService {
   private readonly logger = new Logger(DatabaseService.name);
   private readonly secretName = process.env.AWS_SECRET_NAME || "your-rds-secret-name";
-  private readonly region = process.env.AWS_REGION;
+  private readonly region = process.env.AWS_REGION || 'ap-southeast-1';
   private secretsClient: SecretsManagerClient;
   private cachedCredentials: DatabaseCredentials | null = null;
   private credentialsExpiry: Date | null = null;

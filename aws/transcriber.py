@@ -51,7 +51,7 @@ class AWSTranscriber:
     
     def __init__(self, region: Optional[str] = None):
         """Initialize AWS clients"""
-        self.region = region or os.getenv('AWS_DEFAULT_REGION', 'ap-southeast-2')
+        self.region = region or os.getenv('AWS_DEFAULT_REGION', 'ap-northeast-2')
         self.default_bucket = os.getenv('AUDIO_S3_BUCKET')
         
         try:

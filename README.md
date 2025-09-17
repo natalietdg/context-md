@@ -57,7 +57,7 @@ Edit `.env` file:
 # AWS Configuration
 AWS_ACCESS_KEY_ID=your-aws-access-key
 AWS_SECRET_ACCESS_KEY=your-aws-secret-key  
-AWS_DEFAULT_REGION=ap-southeast-2
+AWS_DEFAULT_REGION=ap-northeast-2
 AUDIO_S3_BUCKET=your-s3-bucket-name
 
 # SEA-LION API

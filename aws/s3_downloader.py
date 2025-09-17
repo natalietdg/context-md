@@ -36,10 +36,10 @@ class S3AudioDownloader:
         Initialize AWS S3 client for audio downloads.
         
         Args:
-            region: AWS region (defaults to AWS_DEFAULT_REGION env var or ap-southeast-2)
+            region: AWS region (defaults to AWS_DEFAULT_REGION env var or ap-northeast-2)
             cache_dir: Local cache directory for downloaded files (optional)
         """
-        self.region = region or os.getenv('AWS_DEFAULT_REGION', 'ap-southeast-2')
+        self.region = region or os.getenv('AWS_DEFAULT_REGION', 'ap-northeast-2')
         self.default_bucket = os.getenv('AUDIO_S3_BUCKET')
         self.cache_dir = Path(cache_dir) if cache_dir else None
         

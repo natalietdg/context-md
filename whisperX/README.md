@@ -161,7 +161,7 @@ You can also use the components programmatically:
 from whisperX.main import WhisperXPipeline
 
 # Initialize pipeline
-pipeline = WhisperXPipeline(aws_region='ap-southeast-2')
+pipeline = WhisperXPipeline(aws_region='ap-northeast-2')
 
 # Process S3 audio
 result = pipeline.process_s3_audio(

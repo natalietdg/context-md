@@ -11,13 +11,14 @@ export class S3Service {
 
   constructor() {
     this.s3Client = new S3Client({
-      region: process.env.AWS_REGION || 'ap-southeast-1',
+      region: process.env.S3_BUCKET_REGION || 'ap-northeast-2',
       credentials: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
       },
     });
-    this.bucketName = process.env.S3_BUCKET_NAME || 'contextmd-audio-storage';
+    console.log({s3Client: this.s3Client})
+    this.bucketName = process.env.AUDIO_S3_BUCKET || 'transcribe-audio-b1';
   }
 
   async uploadFile(
@@ -26,7 +27,9 @@ export class S3Service {
     contentType: string = 'audio/wav',
     metadata?: Record<string, string>
   ): Promise<{ url: string; hash: string; size: number }> {
-    try {
+
+    const url = `https://${this.bucketName}.s3.${process.env.S3_BUCKET_REGION || 'ap-northeast-2'}.amazonaws.com/${key}`;
+    
       // Generate tamper-evident hash
       const hash = crypto.createHash('sha256').update(file).digest('hex');
       
@@ -41,10 +44,9 @@ export class S3Service {
           uploadedAt: new Date().toISOString(),
         },
       });
-
+    
+    try {
       await this.s3Client.send(command);
-      
-      const url = `https://${this.bucketName}.s3.${process.env.AWS_REGION || 'ap-southeast-1'}.amazonaws.com/${key}`;
       
       this.logger.log(`File uploaded successfully: ${key}`);
       
@@ -55,7 +57,7 @@ export class S3Service {
       };
     } catch (error) {
       this.logger.error(`Failed to upload file ${key}:`, error);
-      throw new Error(`S3 upload failed: ${error.message}`);
+      throw new Error(`S3 upload failed: ${error.message} ${url} ${command}`);
     }
   }
 

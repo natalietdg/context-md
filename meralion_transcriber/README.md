@@ -51,7 +51,7 @@ from meralion_transcriber import MERaLiONTranscriber
 # Initialize pipeline (HF_TOKEN loaded from .env automatically)
 pipeline = MERaLiONTranscriber(
     huggingface_token=os.getenv('HF_TOKEN'),  # Loaded from .env file
-    s3_region="ap-southeast-2"  # Optional for S3 support
+    s3_region="ap-northeast-2"  # Optional for S3 support
 )
 
 # Process local audio file
@@ -80,7 +80,7 @@ python meralion_transcriber/example_usage.py \
 # Process audio directly from S3
 python meralion_transcriber/example_usage.py \
     --audio s3://my-bucket/audio/consultation.m4a \
-    --s3-region ap-southeast-2
+    --s3-region ap-northeast-2
 
 # Override HF token if needed
 python meralion_transcriber/example_usage.py \
@@ -189,7 +189,7 @@ export HF_TOKEN="your_huggingface_token"
 # Optional for S3 support
 export AWS_ACCESS_KEY_ID="your_aws_access_key"
 export AWS_SECRET_ACCESS_KEY="your_aws_secret_key"
-export AWS_DEFAULT_REGION="ap-southeast-2"
+export AWS_DEFAULT_REGION="ap-northeast-2"
 export AUDIO_S3_BUCKET="my-audio-bucket"  # Default bucket for relative S3 paths
 
 # Translation handled internally by MERaLiON - no external API needed
