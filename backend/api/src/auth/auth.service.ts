@@ -72,7 +72,7 @@ export class AuthService {
   ) { }
 
   async validateUser(email: string, password: string, role: 'doctor' | 'patient') {
-    console.log({ email, password })
+  
     // Find all users with the specified role
     const users = await this.userRepository.find({
       where: {
@@ -85,14 +85,13 @@ export class AuthService {
     // const encryptedInputEmail = encryptDeterministic(email);
     for (const user of users) {
       // Compare against encrypted email stored in _email field
-      if ((user as any)._email === email) {
+      if (user.email === email) {
         matchingUser = user;
         break;
       }
     }
-    
     // Check if user exists and password matches
-    if (!matchingUser || !matchingUser.password_hash) {
+    if (!matchingUser || !matchingUser.password_hash || matchingUser.password_hash !== password) {
       return null;
     }
     // const compared = await encryptDeterministic(password)
