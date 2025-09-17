@@ -20,7 +20,8 @@ import {
   Play,
   Pause,
   Download,
-  Shield
+  Shield,
+  Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { LiveConsentKaraoke } from '../components/LiveConsentKaraoke';
@@ -74,6 +75,9 @@ const Consultation: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [notes, setNotes] = useState('');
   const [isUpdatingNotes, setIsUpdatingNotes] = useState(false);
+  const [consentAudioUrl, setConsentAudioUrl] = useState<string | null>(null);
+  const [isPlayingConsent, setIsPlayingConsent] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
     if (id) {
@@ -370,21 +374,37 @@ const Consultation: React.FC = () => {
                           variant="outline"
                           onClick={async () => {
                             try {
+                              if (isPlayingConsent && audioRef.current) {
+                                audioRef.current.pause();
+                                setIsPlayingConsent(false);
+                                return;
+                              }
+                              
                               const res = await apiService.replayConsent({
                                 consent_id: consultation.consent?.id || '',
                                 role: 'doctor',
                                 purpose: 'consultation_review'
                               });
                               if (res?.signedUrl) {
-                                window.open(res.signedUrl, '_blank');
+                                setConsentAudioUrl(res.signedUrl);
+                                setIsPlayingConsent(true);
                               }
                             } catch (e) {
                               setError('Failed to replay consent');
                             }
                           }}
                         >
-                          <Play className="h-4 w-4 mr-1" />
-                          Replay Consent
+                          {isPlayingConsent ? (
+                            <>
+                              <Pause className="h-4 w-4 mr-1" />
+                              Pause Consent
+                            </>
+                          ) : (
+                            <>
+                              <Play className="h-4 w-4 mr-1" />
+                              Replay Consent
+                            </>
+                          )}
                         </Button>
                       )}
                     </div>
@@ -433,12 +453,49 @@ const Consultation: React.FC = () => {
                         }}
                         className="mt-4"
                       />
+                      </div>
                     </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
+                  )}
+                  
+                  {/* Inline Audio Player */}
+                  {consentAudioUrl && (
+                    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-blue-900 mb-2">Consent Audio Playback</p>
+                          <audio
+                            ref={audioRef}
+                            src={consentAudioUrl}
+                            controls
+                            className="w-full"
+                            onPlay={() => setIsPlayingConsent(true)}
+                            onPause={() => setIsPlayingConsent(false)}
+                            onEnded={() => {
+                              setIsPlayingConsent(false);
+                              setConsentAudioUrl(null);
+                            }}
+                            autoPlay
+                          />
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            if (audioRef.current) {
+                              audioRef.current.pause();
+                            }
+                            setConsentAudioUrl(null);
+                            setIsPlayingConsent(false);
+                          }}
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            
             {/* Audio Recording */}
             <Card>
               <CardHeader>
@@ -447,7 +504,7 @@ const Consultation: React.FC = () => {
                   Audio Recording
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+                <CardContent>
                 {consultation?.processing_status === 'pending' ? (
                   <div className="space-y-4">
                     {/* Recording Controls */}
@@ -540,40 +597,72 @@ const Consultation: React.FC = () => {
             </Card>
 
             {/* Transcripts */}
-            {(consultation?.transcript_raw || consultation?.transcript_eng) && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Transcripts</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {consultation.transcript_raw && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-600 mb-2 block">
-                        Raw Transcript
-                      </label>
-                      <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
-                        <p className="text-gray-900 whitespace-pre-wrap">
-                          {consultation.transcript_raw}
-                        </p>
+            <Card>
+              <CardHeader>
+                <CardTitle>Transcripts</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Raw Transcript Section */}
+                <div>
+                  <label className="text-sm font-medium text-gray-600 mb-2 block flex items-center">
+                    Raw Transcript
+                    {!consultation?.transcript_raw && consultation?.processing_status === 'processing' && (
+                      <Loader2 className="h-4 w-4 ml-2 animate-spin text-blue-500" />
+                    )}
+                  </label>
+                  {consultation?.transcript_raw ? (
+                    <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
+                      <p className="text-gray-900 whitespace-pre-wrap">
+                        {consultation.transcript_raw}
+                      </p>
+                    </div>
+                  ) : consultation?.processing_status === 'processing' ? (
+                    <div className="bg-gray-50 rounded-lg p-4 flex items-center justify-center min-h-24">
+                      <div className="text-center">
+                        <Loader2 className="h-6 w-6 animate-spin text-blue-500 mx-auto mb-2" />
+                        <p className="text-gray-600 text-sm">Transcribing audio...</p>
                       </div>
                     </div>
-                  )}
-                  
-                  {consultation.transcript_eng && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-600 mb-2 block">
-                        English Translation
-                      </label>
-                      <div className="bg-blue-50 rounded-lg p-4 max-h-64 overflow-y-auto">
-                        <p className="text-gray-900 whitespace-pre-wrap">
-                          {consultation.transcript_eng}
-                        </p>
-                      </div>
+                  ) : (
+                    <div className="bg-gray-50 rounded-lg p-4 flex items-center justify-center min-h-24">
+                      <p className="text-gray-500 text-sm">Transcription not available</p>
                     </div>
                   )}
-                </CardContent>
-              </Card>
-            )}
+                </div>
+                
+                {/* English Translation Section */}
+                <div>
+                  <label className="text-sm font-medium text-gray-600 mb-2 block flex items-center">
+                    English Translation
+                    {!consultation?.transcript_eng && consultation?.transcript_raw && consultation?.processing_status === 'processing' && (
+                      <Loader2 className="h-4 w-4 ml-2 animate-spin text-green-500" />
+                    )}
+                  </label>
+                  {consultation?.transcript_eng ? (
+                    <div className="bg-blue-50 rounded-lg p-4 max-h-64 overflow-y-auto">
+                      <p className="text-gray-900 whitespace-pre-wrap">
+                        {consultation.transcript_eng}
+                      </p>
+                    </div>
+                  ) : consultation?.transcript_raw && consultation?.processing_status === 'processing' ? (
+                    <div className="bg-blue-50 rounded-lg p-4 flex items-center justify-center min-h-24">
+                      <div className="text-center">
+                        <Loader2 className="h-6 w-6 animate-spin text-green-500 mx-auto mb-2" />
+                        <p className="text-gray-600 text-sm">Translating to English...</p>
+                      </div>
+                    </div>
+                  ) : consultation?.transcript_raw ? (
+                    <div className="bg-blue-50 rounded-lg p-4 flex items-center justify-center min-h-24">
+                      <p className="text-gray-500 text-sm">Translation pending</p>
+                    </div>
+                  ) : (
+                    <div className="bg-blue-50 rounded-lg p-4 flex items-center justify-center min-h-24">
+                      <p className="text-gray-500 text-sm">Awaiting transcription</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Notes */}
             <Card>
@@ -706,9 +795,8 @@ const Consultation: React.FC = () => {
                 </div>
                 {consultation?.consent?.aws_audio_link && (
                   <Button
-                    variant="outline"
                     size="sm"
-                    className="w-full mt-3"
+                    variant="outline"
                     onClick={async () => {
                       try {
                         const res = await apiService.replayConsent({
@@ -717,7 +805,8 @@ const Consultation: React.FC = () => {
                           purpose: 'consultation_review'
                         });
                         if (res?.signedUrl) {
-                          window.open(res.signedUrl, '_blank');
+                          setConsentAudioUrl(res.signedUrl);
+                          setIsPlayingConsent(true);
                         }
                       } catch (e) {
                         setError('Failed to replay consent');

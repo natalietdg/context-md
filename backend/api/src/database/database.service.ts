@@ -94,8 +94,25 @@ export class DatabaseService {
   // Health check method to verify database connectivity
   async healthCheck(): Promise<boolean> {
     try {
-      // await this.getDatabaseCredentials();
-      return true;
+      // Test basic database connection with a simple query
+      const { Client } = require('pg');
+      const client = new Client({
+        host: process.env.DATABASE_HOST,
+        port: parseInt(process.env.DATABASE_PORT ?? '5432', 10),
+        user: process.env.DATABASE_USER,
+        password: process.env.DATABASE_PASSWORD,
+        database: process.env.DATABASE_NAME || 'contextmd',
+        ssl: process.env.DATABASE_SSL === 'true' ? {
+          rejectUnauthorized: false,
+        } : false,
+      });
+
+      await client.connect();
+      const result = await client.query('SELECT 1 as test');
+      await client.end();
+      
+      this.logger.log('Database connection test successful');
+      return result.rows[0].test === 1;
     } catch (error) {
       this.logger.error('Database health check failed', error);
       return false;

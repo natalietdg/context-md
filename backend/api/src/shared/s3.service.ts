@@ -27,7 +27,8 @@ export class S3Service {
     metadata?: Record<string, string>
   ): Promise<{ url: string; hash: string; size: number }> {
 
-    const url = `https://${this.bucketName}.s3.${process.env.S3_BUCKET_REGION || 'ap-northeast-2'}.amazonaws.com/${key}`;
+    const region = process.env.S3_BUCKET_REGION || 'ap-northeast-2';
+    const url = `https://${this.bucketName}.s3.${region}.amazonaws.com/${key}`;
     
       // Generate tamper-evident hash
       const hash = crypto.createHash('sha256').update(file).digest('hex');

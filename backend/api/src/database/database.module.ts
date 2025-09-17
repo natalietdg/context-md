@@ -10,6 +10,12 @@ import * as dotenv from 'dotenv';
 // Load environment variables
 dotenv.config();
 
+console.log({ host: process.env.DATABASE_HOST});
+console.log({ DATABASE_USER: process.env.DATABASE_USER});
+console.log({ DATABASE_PASSWORD: process.env.DATABASE_PASSWORD});
+console.log({ DATABASE_NAME: process.env.DATABASE_NAME});
+console.log({ DATABASE_SSL: process.env.DATABASE_SSL});
+
 // database.module.ts
 @Module({
     imports: [
@@ -20,10 +26,10 @@ dotenv.config();
             username: process.env.DATABASE_USER,
             password: process.env.DATABASE_PASSWORD,
             database: process.env.DATABASE_NAME || 'contextmd',
-            ssl: process.env.DATABASE_SSL === 'true' ? {
-                ca: fs.readFileSync(path.join(process.cwd(), 'rds-ca-2019-root.pem')).toString(),
+            ssl: {
+                ca: fs.readFileSync(path.join(__dirname, '../../rds-ca-2019-root.pem')).toString(),
                 rejectUnauthorized: false,
-            } : false,
+            },
             entities: [
                 entities.User,
                 entities.Doctor,

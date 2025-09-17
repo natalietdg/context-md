@@ -86,12 +86,21 @@ export class SpeechProcessingService {
 
     const repoRoot = this.resolveRepoRoot();
     const pipelinePath = this.resolvePipelinePath(repoRoot);
-    const pythonBin = process.env.PYTHON_BIN || 'python3';
+    const pythonBin = process.env.PYTHON_BIN || path.join(repoRoot, 'venv/bin/python');
 
     // Run pipeline with translation but skip clinical extraction for speed/cost
     await new Promise<void>((resolve, reject) => {
       const args = [pipelinePath, audioPath, '--skip-clinical'];
-      const child = spawn(pythonBin, args, { cwd: repoRoot, env: process.env });
+      // Ensure AWS environment variables are passed to the pipeline
+      const pipelineEnv = {
+        ...process.env,
+        AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
+        AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
+        AWS_DEFAULT_REGION: process.env.S3_BUCKET_REGION || process.env.AWS_DEFAULT_REGION || 'ap-northeast-2',
+        AUDIO_S3_BUCKET: process.env.AUDIO_S3_BUCKET || 'transcribe-audio-b1',
+        SEALION_API_KEY: process.env.SEALION_API_KEY,
+      };
+      const child = spawn(pythonBin, args, { cwd: repoRoot, env: pipelineEnv });
       let stderr = '';
       child.stderr.on('data', (d) => {
         stderr += d.toString();
@@ -245,8 +254,16 @@ export class SpeechProcessingService {
     }
 
     try {
-      // Use SEA-LION API for translation
-      const seaLionEndpoint = process.env.SEALION_ENDPOINT || 'https://api.sea-lion.ai/v1/translate';
+      // Use SEA-LION API for translation - but endpoint doesn't exist, so fallback to original text
+      const seaLionEndpoint = process.env.SEALION_ENDPOINT;
+      
+      if (!seaLionEndpoint) {
+        this.logger.warn('SEALION_ENDPOINT not configured, returning original text');
+        return {
+          text: rawTranscript,
+          confidence: 0.7,
+        };
+      }
       
       const response = await firstValueFrom(
         this.httpService.post(
