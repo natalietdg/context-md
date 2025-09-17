@@ -17,7 +17,6 @@ export class S3Service {
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
       },
     });
-    console.log({s3Client: this.s3Client})
     this.bucketName = process.env.AUDIO_S3_BUCKET || 'transcribe-audio-b1';
   }
 

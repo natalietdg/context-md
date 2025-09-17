@@ -36,7 +36,7 @@ async function bootstrap() {
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['authorization', 'Authorization', 'x-client-info', 'apikey', 'content-type', 'Content-Type', 'x-api-key'],
-    credentials: false,
+    credentials: true,
   });
 
   // Body size limits (50KB)
