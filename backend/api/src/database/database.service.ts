@@ -108,7 +108,7 @@ export class DatabaseService {
       });
 
       await client.connect();
-      const result = await client.query('SELECT 1 as test');
+      const result = await client.query('SELECT * from patient LIMIT 1');
       await client.end();
       this.logger.log(result.rows);
       this.logger.log('Database connection test successful');
