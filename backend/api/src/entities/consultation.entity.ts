@@ -36,6 +36,9 @@ export class Consultation {
   transcript_eng!: string;
 
   @Column({ nullable: true })
+  notes?: string;
+
+  @Column({ nullable: true })
   audio_duration_seconds!: number;
 
   @Column('bigint', { nullable: true })

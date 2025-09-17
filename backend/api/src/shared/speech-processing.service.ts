@@ -77,7 +77,13 @@ export class SpeechProcessingService {
     return candidate;
   }
 
-  private async runPipelineCli(audioBuffer: Buffer): Promise<TranscriptionResult> {
+  private async runPipelineCli(audioBuffer: Buffer): Promise<{
+    text: string;
+    confidence: number;
+    language_detected: string;
+    english?: string;
+    english_confidence?: number;
+  }> {
     const start = Date.now();
     // Write audio to a temp file
     const tmpBase = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'ctxmd-'));
@@ -91,14 +97,9 @@ export class SpeechProcessingService {
     // Run pipeline with translation but skip clinical extraction for speed/cost
     await new Promise<void>((resolve, reject) => {
       const args = [pipelinePath, audioPath, '--skip-clinical'];
-      // Ensure AWS environment variables are passed to the pipeline
+      // Use existing environment variables from .env
       const pipelineEnv = {
         ...process.env,
-        AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
-        AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
-        AWS_DEFAULT_REGION: process.env.S3_BUCKET_REGION || process.env.AWS_DEFAULT_REGION || 'ap-northeast-2',
-        AUDIO_S3_BUCKET: process.env.AUDIO_S3_BUCKET || 'transcribe-audio-b1',
-        SEALION_API_KEY: process.env.SEALION_API_KEY,
       };
       const child = spawn(pythonBin, args, { cwd: repoRoot, env: pipelineEnv });
       let stderr = '';
@@ -170,13 +171,12 @@ export class SpeechProcessingService {
     // Cleanup temp
     try { await fs.promises.unlink(audioPath); await fs.promises.rmdir(tmpBase); } catch {}
 
-    const elapsed = Date.now() - start;
     return {
-      raw_transcript: rawTranscript || '[Transcription empty]',
-      english_transcript: englishTranscript || rawTranscript || '',
-      confidence_score: englishTranscript ? 0.9 : 0.8,
-      processing_time_ms: elapsed,
-      language_detected: detectedLanguage,
+      text: rawTranscript || '[Transcription empty]',
+      confidence: englishTranscript ? 0.9 : 0.8,
+      language_detected: detectedLanguage || 'auto',
+      english: englishTranscript || rawTranscript || '',
+      english_confidence: englishTranscript ? 0.9 : 0.8,
     };
   }
 
@@ -192,15 +192,9 @@ export class SpeechProcessingService {
 
       // CLI fallback: if no endpoint configured or explicitly set to 'cli'
       if (!whisperXEndpoint || whisperXEndpoint.toLowerCase() === 'cli') {
-        // For production, return mock transcription instead of running complex pipeline
-        this.logger.warn('WhisperX endpoint not configured, returning mock transcription');
-        return {
-          text: '[Mock transcription - audio received and processed]',
-          confidence: 0.8,
-          language_detected: language,
-          english: '[Mock English translation - audio received and processed]',
-          english_confidence: 0.8,
-        };
+        // Use CLI pipeline for transcription and translation
+        this.logger.log('Using CLI pipeline for transcription');
+        return await this.runPipelineCli(audioBuffer);
       }
 
       // HTTP mode: Use WhisperX service

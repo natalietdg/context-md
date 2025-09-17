@@ -75,7 +75,7 @@ export class User {
   // Encryption helper methods
   private encrypt(text: string): string {
     const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipher(User.ALGORITHM, User.ENCRYPTION_KEY);
+    const cipher = crypto.createCipheriv(User.ALGORITHM, User.ENCRYPTION_KEY, iv);
     let encrypted = cipher.update(text, 'utf8', 'hex');
     encrypted += cipher.final('hex');
     return iv.toString('hex') + ':' + encrypted;
@@ -85,7 +85,7 @@ export class User {
     const parts = encryptedText.split(':');
     const iv = Buffer.from(parts[0], 'hex');
     const encrypted = parts[1];
-    const decipher = crypto.createDecipher(User.ALGORITHM, User.ENCRYPTION_KEY);
+    const decipher = crypto.createDecipheriv(User.ALGORITHM, User.ENCRYPTION_KEY, iv);
     let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
     return decrypted;

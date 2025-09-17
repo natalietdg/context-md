@@ -1,4 +1,4 @@
-import { IsUUID, IsString, IsOptional, IsEnum, IsDateString, IsBoolean } from 'class-validator';
+import { IsUUID, IsString, IsOptional, IsEnum, IsDateString, IsBoolean, IsObject } from 'class-validator';
 import { ProcessingStatus } from '../../entities';
 
 export class CreateConsultationDto {
@@ -25,6 +25,10 @@ export class UpdateConsultationDto {
   @IsOptional()
   @IsString()
   transcript_eng?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 
   @IsOptional()
   @IsEnum(ProcessingStatus)

@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { LiveConsentKaraoke } from '../components/LiveConsentKaraoke';
+import { ReviewVerification } from '../components/ReviewVerification';
 
 interface Consultation {
   id: string;
@@ -75,6 +76,15 @@ const Consultation: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [notes, setNotes] = useState('');
   const [isUpdatingNotes, setIsUpdatingNotes] = useState(false);
+  const [clinicalSummary, setClinicalSummary] = useState({
+    chief_complaint: '',
+    history_present_illness: '',
+    physical_examination: '',
+    assessment: '',
+    plan: '',
+    medications: '',
+    follow_up: ''
+  });
   const [consentAudioUrl, setConsentAudioUrl] = useState<string | null>(null);
   const [isPlayingConsent, setIsPlayingConsent] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
