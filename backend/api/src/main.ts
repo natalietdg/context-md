@@ -18,6 +18,7 @@ const allowedOrigins = new Set([
   'https://contextmd.net',
   'https://www.contextmd.net',
   'https://d12pwir1jq0uw0.cloudfront.net',
+  "https://api.contextmd.net"
 ]);
 
 async function bootstrap() {
