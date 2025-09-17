@@ -94,12 +94,12 @@ export class SpeechProcessingService {
       const pythonBin = path.join(process.cwd(), '..', '..', 'venv', 'bin', 'python3');
       const pipelinePath = path.join(process.cwd(), '..', '..', 'pipeline.py');
       
-      this.logger.log(`Running pipeline: ${pythonBin} ${pipelinePath} --input ${audioPath}`);
+      this.logger.log(`Running pipeline: ${pythonBin} ${pipelinePath} ${audioPath}`);
       
       const result = await new Promise<string>((resolve, reject) => {
         execFile(
           pythonBin,
-          [pipelinePath, '--input', audioPath],
+          [pipelinePath, audioPath],
           {
             env: {
               ...process.env,
