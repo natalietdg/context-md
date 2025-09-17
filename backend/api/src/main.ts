@@ -31,6 +31,8 @@ async function bootstrap() {
       // default allow the production site
       if( origin === 'http://localhost:3000') return callback(null, true);
       if (origin === 'https://contextmd.netlify.app') return callback(null, true);
+      if (origin === 'https://contextmd.net') return callback(null, true);
+      if (origin === 'https://d12pwir1jq0uw0.cloudfront.net/login') return callback(null, true);
       return callback(new Error('Not allowed by CORS'));
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
