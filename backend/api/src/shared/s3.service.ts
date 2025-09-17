@@ -109,6 +109,27 @@ export class S3Service {
     }
   }
 
+  async downloadFile(url: string): Promise<Buffer> {
+    try {
+      // Extract key from S3 URL
+      const urlParts = url.split('/');
+      const key = urlParts.slice(3).join('/'); // Remove https://bucket.s3.region.amazonaws.com/
+      
+      const command = new GetObjectCommand({
+        Bucket: this.bucketName,
+        Key: key,
+      });
+
+      const response = await this.s3Client.send(command);
+      const body = await response.Body.transformToByteArray();
+      
+      return Buffer.from(body);
+    } catch (error) {
+      this.logger.error(`Failed to download file from ${url}:`, error);
+      throw new Error(`S3 download failed: ${error.message}`);
+    }
+  }
+
   generateFileKey(type: 'consent' | 'consultation', userId: string, timestamp?: Date): string {
     const date = timestamp || new Date();
     const dateStr = date.toISOString().split('T')[0];

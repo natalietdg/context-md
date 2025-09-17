@@ -30,19 +30,19 @@ export class Consultation {
   aws_audio_link!: string;
 
   @Column({ nullable: true })
-  transcript_raw!: string;
+  transcript_raw?: string;
 
   @Column({ nullable: true })
-  transcript_eng!: string;
+  transcript_eng?: string;
 
   @Column({ nullable: true })
   notes?: string;
 
   @Column({ nullable: true })
-  audio_duration_seconds!: number;
+  audio_duration_seconds?: number;
 
   @Column('bigint', { nullable: true })
-  file_size!: number;
+  file_size?: number;
 
   @Column({
     type: 'enum',

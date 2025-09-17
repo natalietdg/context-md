@@ -5,7 +5,7 @@ import FormData from 'form-data';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { spawn } from 'child_process';
+import { execFile } from 'child_process';
 
 export interface TranscriptionResult {
   raw_transcript: string;
@@ -90,94 +90,75 @@ export class SpeechProcessingService {
     const audioPath = path.join(tmpBase, `audio_${Date.now()}.wav`);
     await fs.promises.writeFile(audioPath, audioBuffer);
 
-    const repoRoot = this.resolveRepoRoot();
-    const pipelinePath = this.resolvePipelinePath(repoRoot);
-    const pythonBin = process.env.PYTHON_BIN || path.join(repoRoot, 'venv/bin/python');
+    try {
+      const pythonBin = path.join(process.cwd(), '..', '..', 'venv', 'bin', 'python3');
+      const pipelinePath = path.join(process.cwd(), '..', '..', 'pipeline.py');
+      
+      this.logger.log(`Running pipeline: ${pythonBin} ${pipelinePath} --input ${audioPath}`);
+      
+      const result = await new Promise<string>((resolve, reject) => {
+        execFile(
+          pythonBin,
+          [pipelinePath, '--input', audioPath],
+          {
+            env: {
+              ...process.env,
+              SEALION_API_KEY: process.env.SEALION_API_KEY,
+            },
+          },
+          (err, stdout, stderr) => {
+            if (err) {
+              this.logger.error('Pipeline execution error:', err);
+              this.logger.error('Pipeline stderr:', stderr);
+              reject(new Error(`Pipeline failed: ${err.message}`));
+            } else {
+              this.logger.log('Pipeline stdout:', stdout);
+              resolve(stdout);
+            }
+          }
+        );
+      });
 
-    // Run pipeline with translation but skip clinical extraction for speed/cost
-    await new Promise<void>((resolve, reject) => {
-      const args = [pipelinePath, audioPath, '--skip-clinical'];
-      // Use existing environment variables from .env
-      const pipelineEnv = {
-        ...process.env,
+      this.logger.log(`Pipeline completed in ${Date.now() - start}ms`);
+      
+      // Parse the output files
+      const outputDir = path.join(tmpBase, 'outputs');
+      
+      // Find the actual files (glob pattern)
+      const transcriptFiles = await fs.promises.readdir(path.join(outputDir, '01_transcripts_lean')).catch(() => []);
+      const translatedFiles = await fs.promises.readdir(path.join(outputDir, '02_translated')).catch(() => []);
+      
+      let transcriptData = null;
+      let translatedData = null;
+      
+      if (transcriptFiles.length > 0) {
+        const transcriptContent = await fs.promises.readFile(
+          path.join(outputDir, '01_transcripts_lean', transcriptFiles[0]), 
+          'utf-8'
+        );
+        transcriptData = JSON.parse(transcriptContent);
+      }
+      
+      if (translatedFiles.length > 0) {
+        const translatedContent = await fs.promises.readFile(
+          path.join(outputDir, '02_translated', translatedFiles[0]), 
+          'utf-8'
+        );
+        translatedData = JSON.parse(translatedContent);
+      }
+
+      return {
+        text: transcriptData?.transcript || '[No transcript generated]',
+        confidence: transcriptData?.confidence || 0.0,
+        language_detected: transcriptData?.language || 'unknown',
+        english: translatedData?.english_translation || undefined,
+        english_confidence: translatedData?.translation_confidence || undefined,
       };
-      const child = spawn(pythonBin, args, { cwd: repoRoot, env: pipelineEnv });
-      let stderr = '';
-      child.stderr.on('data', (d) => {
-        stderr += d.toString();
-        try { this.logger.debug(`[pipeline] ${d.toString().trim()}`); } catch {}
-      });
-      child.on('close', (code) => {
-        if (code === 0) return resolve();
-        reject(new Error(`pipeline.py exited with code ${code}: ${stderr}`));
-      });
-    });
 
-    // Parse latest outputs created after 'start'
-    const leanDir = path.join(repoRoot, 'outputs', '01_transcripts_lean');
-    const translatedDir = path.join(repoRoot, 'outputs', '02_translated');
-
-    const pickLatestAfter = async (dir: string): Promise<string | null> => {
-      try {
-        const files = await fs.promises.readdir(dir);
-        const jsons = files.filter(f => f.endsWith('.json'));
-        let best: { file: string; mtime: number } | null = null;
-        for (const f of jsons) {
-          const p = path.join(dir, f);
-          const st = await fs.promises.stat(p);
-          const mt = st.mtimeMs;
-          if (mt >= start && (!best || mt > best.mtime)) best = { file: p, mtime: mt };
-        }
-        return best ? best.file : null;
-      } catch { return null; }
-    };
-
-    const leanFile = await pickLatestAfter(leanDir);
-    const translatedFile = await pickLatestAfter(translatedDir);
-
-    let rawTranscript = '';
-    let englishTranscript = '';
-    let detectedLanguage: string | undefined = undefined;
-
-    if (leanFile) {
-      try {
-        const data = JSON.parse(await fs.promises.readFile(leanFile, 'utf-8'));
-        if (Array.isArray(data?.turns)) {
-          rawTranscript = data.turns.map((t: any) => (t?.text || '')).join(' ').trim();
-        } else if (typeof data?.text === 'string') {
-          rawTranscript = data.text;
-        }
-        if (Array.isArray(data?.languages_detected) && data.languages_detected.length > 0) {
-          detectedLanguage = data.languages_detected[0];
-        }
-      } catch (e) {
-        this.logger.warn(`Failed to parse lean transcript ${leanFile}: ${String(e)}`);
-      }
+    } finally {
+      // Clean up temp files
+      await fs.promises.rm(tmpBase, { recursive: true, force: true }).catch(() => {});
     }
-
-    if (translatedFile) {
-      try {
-        const data = JSON.parse(await fs.promises.readFile(translatedFile, 'utf-8'));
-        if (Array.isArray(data?.turns)) {
-          englishTranscript = data.turns.map((t: any) => (t?.text || '')).join(' ').trim();
-        } else if (typeof data?.text === 'string') {
-          englishTranscript = data.text;
-        }
-      } catch (e) {
-        this.logger.warn(`Failed to parse translated transcript ${translatedFile}: ${String(e)}`);
-      }
-    }
-
-    // Cleanup temp
-    try { await fs.promises.unlink(audioPath); await fs.promises.rmdir(tmpBase); } catch {}
-
-    return {
-      text: rawTranscript || '[Transcription empty]',
-      confidence: englishTranscript ? 0.9 : 0.8,
-      language_detected: detectedLanguage || 'auto',
-      english: englishTranscript || rawTranscript || '',
-      english_confidence: englishTranscript ? 0.9 : 0.8,
-    };
   }
 
   private async transcribeAudio(audioBuffer: Buffer, language: string): Promise<{
@@ -188,42 +169,9 @@ export class SpeechProcessingService {
     english_confidence?: number;
   }> {
     try {
-      const whisperXEndpoint = process.env.WHISPERX_ENDPOINT;
-
-      // CLI fallback: if no endpoint configured or explicitly set to 'cli'
-      if (!whisperXEndpoint || whisperXEndpoint.toLowerCase() === 'cli') {
-        // Use CLI pipeline for transcription and translation
-        this.logger.log('Using CLI pipeline for transcription');
-        return await this.runPipelineCli(audioBuffer);
-      }
-
-      // HTTP mode: Use WhisperX service
-      
-      const formData = new FormData();
-      formData.append('audio', audioBuffer, {
-        filename: 'audio.wav',
-        contentType: 'audio/wav',
-      });
-      formData.append('language', language);
-      formData.append('model', 'large-v2');
-
-      const response = await firstValueFrom(
-        this.httpService.post(whisperXEndpoint, formData, {
-          headers: {
-            ...formData.getHeaders(),
-            'Authorization': `Bearer ${process.env.WHISPERX_API_KEY}`,
-          },
-          timeout: 300000, // 5 minutes timeout
-        })
-      );
-
-      const result = response.data;
-      
-      return {
-        text: result.transcript || result.text || '',
-        confidence: result.confidence || 0.8,
-        language_detected: result.language || language,
-      };
+      // Always use CLI pipeline
+      this.logger.log('Using CLI pipeline for transcription');
+      return await this.runPipelineCli(audioBuffer);
     } catch (error) {
       this.logger.error('Transcription failed:', error);
       

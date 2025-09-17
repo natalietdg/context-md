@@ -27,7 +27,6 @@ export class ConsultationService {
 
   async createConsultation(
     createConsultationDto: CreateConsultationDto,
-    audioFile: Buffer,
     requestInfo: { userId: string; ipAddress?: string; userAgent?: string; sessionId?: string }
   ): Promise<Consultation> {
     const { patient_id, doctor_id, consent_id, consultation_date } = createConsultationDto;
@@ -52,28 +51,18 @@ export class ConsultationService {
     }
 
     try {
-      // Generate S3 key and upload audio
+      // Generate placeholder S3 key for live recording
       const s3Key = this.s3Service.generateFileKey('consultation', patient_id);
-      const uploadResult = await this.s3Service.uploadFile(
-        audioFile,
-        s3Key,
-        'audio/wav',
-        {
-          patientId: patient_id,
-          doctorId: doctor_id,
-          type: 'consultation',
-        }
-      );
-
-      // Create consultation record
+      const placeholderUrl = `https://${process.env.AUDIO_S3_BUCKET || 'transcribe-audio-b1'}.s3.${process.env.AWS_DEFAULT_REGION || 'ap-northeast-2'}.amazonaws.com/${s3Key}`;
+      
+      // Create consultation record with placeholder audio link for live recording
       const consultation = this.consultationRepository.create({
         patient_id,
         doctor_id,
         consent_id,
-        aws_audio_link: uploadResult.url,
-        file_size: uploadResult.size,
+        aws_audio_link: placeholderUrl,
         consultation_date: consultation_date ? new Date(consultation_date) : new Date(),
-        processing_status: ProcessingStatus.PENDING,
+        processing_status: ProcessingStatus.PENDING, // Will be updated when live recording completes
       });
 
       const savedConsultation = await this.consultationRepository.save(consultation);
@@ -91,8 +80,8 @@ export class ConsultationService {
         requestInfo.sessionId,
       );
 
-      // Start async audio processing
-      this.processConsultationAudio(savedConsultation.id, audioFile);
+      // Start async audio processing for transcription and translation
+      this.processConsultationAudioFromS3(savedConsultation.id);
 
       this.logger.log(`Consultation created: ${savedConsultation.id} for patient ${patient_id}`);
       return savedConsultation;
@@ -102,37 +91,6 @@ export class ConsultationService {
     }
   }
 
-  private async processConsultationAudio(consultationId: string, audioBuffer: Buffer): Promise<void> {
-    try {
-      // Update status to processing
-      await this.consultationRepository.update(consultationId, {
-        processing_status: ProcessingStatus.PROCESSING,
-      });
-
-      // Process audio through speech pipeline
-      const transcriptionResult = await this.speechProcessingService.processAudioChunks(audioBuffer);
-
-      // Calculate audio duration (rough estimate)
-      const audioDuration = Math.floor(audioBuffer.length / (16000 * 2)); // Assuming 16kHz, 16-bit
-
-      // Update consultation with transcripts
-      await this.consultationRepository.update(consultationId, {
-        transcript_raw: transcriptionResult.raw_transcript,
-        transcript_eng: transcriptionResult.english_transcript,
-        audio_duration_seconds: audioDuration,
-        processing_status: ProcessingStatus.COMPLETED,
-      });
-
-      this.logger.log(`Audio processing completed for consultation ${consultationId}`);
-    } catch (error) {
-      this.logger.error(`Audio processing failed for consultation ${consultationId}:`, error);
-      
-      // Update status to failed
-      await this.consultationRepository.update(consultationId, {
-        processing_status: ProcessingStatus.FAILED,
-      });
-    }
-  }
 
   async getConsultation(id: string): Promise<Consultation> {
     const consultation = await this.consultationRepository.findOne({
@@ -223,8 +181,6 @@ export class ConsultationService {
         requestInfo.sessionId,
       );
 
-      // Start async audio processing
-      this.processConsultationAudio(consultationId, audioFile);
 
       this.logger.log(`Consultation audio uploaded for ${consultationId}`);
       return saved;
@@ -334,5 +290,38 @@ export class ConsultationService {
       status: consultation.processing_status,
       progress,
     };
+  }
+
+  private async processConsultationAudioFromS3(consultationId: string): Promise<void> {
+    try {
+      // Update status to processing
+      await this.consultationRepository.update(consultationId, {
+        processing_status: ProcessingStatus.PROCESSING,
+      });
+
+      const consultation = await this.getConsultation(consultationId);
+      
+      // Download audio from S3
+      const audioBuffer = await this.s3Service.downloadFile(consultation.aws_audio_link);
+      
+      // Process audio through speech pipeline
+      const transcriptionResult = await this.speechProcessingService.processAudio(audioBuffer);
+
+      // Update consultation with transcripts
+      await this.consultationRepository.update(consultationId, {
+        transcript_raw: transcriptionResult.raw_transcript,
+        transcript_eng: transcriptionResult.english_transcript,
+        processing_status: ProcessingStatus.COMPLETED,
+      });
+
+      this.logger.log(`Audio processing completed for consultation ${consultationId}`);
+    } catch (error) {
+      this.logger.error(`Audio processing failed for consultation ${consultationId}:`, error);
+      
+      // Update status to failed
+      await this.consultationRepository.update(consultationId, {
+        processing_status: ProcessingStatus.FAILED,
+      });
+    }
   }
 }

@@ -337,22 +337,22 @@ const Consultation: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-gray-600">Name</label>
-                    <p className="text-gray-900">{consultation?.patient.name}</p>
+                    <p className="text-gray-900">{consultation?.patient?.name || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-600">Email</label>
-                    <p className="text-gray-900">{consultation?.patient.email}</p>
+                    <p className="text-gray-900">{consultation?.patient?.email || 'N/A'}</p>
                   </div>
-                  {consultation?.patient.phone && (
+                  {consultation?.patient?.phone && (
                     <div>
                       <label className="text-sm font-medium text-gray-600">Phone</label>
-                      <p className="text-gray-900">{consultation.patient.phone}</p>
+                      <p className="text-gray-900">{consultation.patient?.phone}</p>
                     </div>
                   )}
-                  {consultation?.patient.allergies && (
+                  {consultation?.patient?.allergies && (
                     <div>
                       <label className="text-sm font-medium text-gray-600">Allergies</label>
-                      <p className="text-red-700 font-medium">{consultation.patient.allergies}</p>
+                      <p className="text-red-700 font-medium">{consultation.patient?.allergies}</p>
                     </div>
                   )}
                 </div>

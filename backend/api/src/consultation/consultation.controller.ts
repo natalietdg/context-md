@@ -7,13 +7,10 @@ import {
   Param, 
   UseGuards, 
   Request, 
-  UseInterceptors, 
-  UploadedFile,
   BadRequestException,
   Query
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { FileInterceptor } from '@nestjs/platform-express';
 import { ConsultationService } from './consultation.service';
 import { CreateConsultationDto, UpdateConsultationDto, LockConsultationDto } from './dto';
 
@@ -23,16 +20,10 @@ export class ConsultationController {
   constructor(private consultationService: ConsultationService) {}
 
   @Post()
-  @UseInterceptors(FileInterceptor('audio'))
   async createConsultation(
     @Body() createConsultationDto: CreateConsultationDto,
-    @UploadedFile() audioFile: Express.Multer.File,
     @Request() req,
   ) {
-    if (!audioFile) {
-      throw new BadRequestException('Audio file is required');
-    }
-
     const requestInfo = {
       userId: req.user.id,
       ipAddress: req.ip,
@@ -42,7 +33,6 @@ export class ConsultationController {
 
     return this.consultationService.createConsultation(
       createConsultationDto,
-      audioFile.buffer,
       requestInfo,
     );
   }
@@ -88,26 +78,6 @@ export class ConsultationController {
     return this.consultationService.getConsultationProcessingStatus(id);
   }
 
-  @Put(':id/audio')
-  @UseInterceptors(FileInterceptor('audio'))
-  async uploadConsultationAudio(
-    @Param('id') id: string,
-    @UploadedFile() audioFile: Express.Multer.File,
-    @Request() req,
-  ) {
-    if (!audioFile) {
-      throw new BadRequestException('Audio file is required');
-    }
-
-    const requestInfo = {
-      userId: req.user.id,
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
-      sessionId: req.sessionID,
-    };
-
-    return this.consultationService.uploadConsultationAudio(id, audioFile.buffer, requestInfo);
-  }
 
   @Get('patient/:patientId')
   async getPatientConsultations(@Param('patientId') patientId: string) {

@@ -19,8 +19,10 @@ import {
   Mic,
   MicOff,
   Upload,
-  FileAudio
+  FileAudio,
+  Shield
 } from 'lucide-react';
+import { LiveConsentKaraoke } from '../components/LiveConsentKaraoke';
 
 interface Patient {
   id: string;
@@ -78,6 +80,7 @@ const NewConsultation: React.FC = () => {
     }, 300);
     return () => clearTimeout(handle);
   }, [patientSearch]);
+
 
   const startRecording = async () => {
     try {
@@ -327,54 +330,54 @@ const NewConsultation: React.FC = () => {
               />
             </div>
 
-            {/* Consent Recording (Required) */}
-            <div className="space-y-2">
-              <Label>Patient Consent Audio (Required)</Label>
-              <p className="text-sm text-gray-600">Record or upload the patient's verbal consent for this consultation</p>
-              <div className="flex items-center space-x-4">
-                <Button
-                  onClick={isRecordingConsent ? stopConsentRecording : startConsentRecording}
-                  className={isRecordingConsent ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}
-                  type="button"
-                >
-                  {isRecordingConsent ? (
-                    <>
-                      <MicOff className="h-4 w-4 mr-2" />
-                      Stop Consent Recording
-                    </>
-                  ) : (
-                    <>
-                      <Mic className="h-4 w-4 mr-2" />
-                      Record Consent
-                    </>
-                  )}
-                </Button>
-
-                <span className="text-gray-500">or</span>
-
-                <Button
-                  variant="outline"
-                  type="button"
-                  onClick={() => consentFileInputRef.current?.click()}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload Consent
-                </Button>
-                <input
-                  ref={consentFileInputRef}
-                  type="file"
-                  accept="audio/*"
-                  onChange={handleConsentUpload}
-                  className="hidden"
+            {/* Live Consent Verification */}
+            <div className="space-y-4">
+              <Label>Patient Consent (Required)</Label>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <p className="text-sm text-amber-800 mb-3">
+                  Doctor: Please read the following consent statement to the patient. The system will detect when they have spoken the required percentage of the text.
+                </p>
+                <p className="text-xs text-amber-700 mb-4">
+                  Patient needs to repeat back the consent statement with at least 70% accuracy. This will be recorded for PDPA compliance.
+                </p>
+                
+                <LiveConsentKaraoke
+                  words={[
+                    "This", "consultation", "will", "be", "recorded", "for", "medical", "documentation", "and", "quality", "purposes.",
+                    "Your", "health", "information", "will", "be", "processed", "according", "to", "PDPA", "and", "stored", "securely", "with", "authorized", "personnel", "only.",
+                    "You", "have", "rights", "to", "access,", "correct,", "or", "delete", "your", "data.",
+                    "The", "AI", "system", "will", "analyze", "this", "for", "medical", "summaries.",
+                    "Do", "you", "consent", "to", "proceed?"
+                  ]}
+                  lines={[
+                    "This consultation will be recorded for medical documentation and quality purposes.",
+                    "Your health information will be processed according to PDPA and stored securely with authorized personnel only.",
+                    "You have rights to access, correct, or delete your data.",
+                    "The AI system will analyze this for medical summaries.",
+                    "Do you consent to proceed?"
+                  ]}
+                  language="en-US"
+                  sentenceMode={true}
+                  sentenceThreshold={0.7}
+                  ignoreBracketed={true}
+                  requirePDPAKeyword={true}
+                  onCompleted={() => {
+                    console.log('Consent completed');
+                    // LiveConsentKaraoke doesn't provide audio blob, use manual recording
+                    if (consentBlob) {
+                      console.log('Consent audio already recorded');
+                    }
+                  }}
+                  className="mt-4"
                 />
-              </div>
 
-              {consentBlob && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center space-x-2">
-                  <FileAudio className="h-5 w-5 text-green-600" />
-                  <span className="text-green-800 text-sm">Consent audio ready</span>
-                </div>
-              )}
+                {consentBlob && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center space-x-2 mt-3">
+                    <FileAudio className="h-5 w-5 text-green-600" />
+                    <span className="text-green-800 text-sm">Consent recorded successfully</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Audio Recording (Required) */}
@@ -417,6 +420,7 @@ const NewConsultation: React.FC = () => {
                   className="hidden"
                 />
               </div>
+
 
               {audioBlob && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center space-x-2">

@@ -46,11 +46,17 @@ export class User {
   updated_at!: Date;
 
   // Encryption key - CRITICAL: Must be set in production environment
-  private static readonly ENCRYPTION_KEY = process.env.DB_ENCRYPTION_KEY || (() => {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('DB_ENCRYPTION_KEY environment variable is required in production');
+  private static readonly ENCRYPTION_KEY = (() => {
+    const key = process.env.DB_ENCRYPTION_KEY || 'dev-key-32-chars-long-change-me!!';
+    // Ensure key is exactly 32 bytes for AES-256
+    if (Buffer.from(key).length !== 32) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('DB_ENCRYPTION_KEY must be exactly 32 characters/bytes for AES-256');
+      }
+      // Pad or truncate dev key to 32 bytes
+      return key.padEnd(32, '0').substring(0, 32);
     }
-    return 'dev-key-32-chars-long-change-me!!';
+    return key;
   })();
   private static readonly ALGORITHM = 'aes-256-cbc';
 
@@ -82,13 +88,25 @@ export class User {
   }
 
   private decrypt(encryptedText: string): string {
+    if (!encryptedText || !encryptedText.includes(':')) {
+      return encryptedText || '';
+    }
+    
     const parts = encryptedText.split(':');
-    const iv = Buffer.from(parts[0], 'hex');
-    const encrypted = parts[1];
-    const decipher = crypto.createDecipheriv(User.ALGORITHM, User.ENCRYPTION_KEY, iv);
-    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    return decrypted;
+    if (parts.length !== 2) {
+      return encryptedText;
+    }
+    
+    try {
+      const iv = Buffer.from(parts[0], 'hex');
+      const encrypted = parts[1];
+      const decipher = crypto.createDecipheriv(User.ALGORITHM, User.ENCRYPTION_KEY, iv);
+      let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      return decrypted;
+    } catch (error) {
+      return encryptedText;
+    }
   }
 
   // Generate ID with proper prefix on creation
