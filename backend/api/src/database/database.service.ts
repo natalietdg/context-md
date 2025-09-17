@@ -110,7 +110,7 @@ export class DatabaseService {
       await client.connect();
       const result = await client.query('SELECT 1 as test');
       await client.end();
-      
+      this.logger.log(result.rows);
       this.logger.log('Database connection test successful');
       return result.rows[0].test === 1;
     } catch (error) {
