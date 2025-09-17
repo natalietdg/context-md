@@ -8,8 +8,11 @@ import {
   UseGuards, 
   Request, 
   BadRequestException,
-  Query
+  Query,
+  UseInterceptors,
+  UploadedFile
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
 import { ConsultationService } from './consultation.service';
 import { CreateConsultationDto, UpdateConsultationDto, LockConsultationDto } from './dto';
@@ -20,8 +23,10 @@ export class ConsultationController {
   constructor(private consultationService: ConsultationService) {}
 
   @Post()
+  @UseInterceptors(FileInterceptor('audio'))
   async createConsultation(
     @Body() createConsultationDto: CreateConsultationDto,
+    @UploadedFile() audioFile: Express.Multer.File,
     @Request() req,
   ) {
     const requestInfo = {
@@ -31,8 +36,9 @@ export class ConsultationController {
       sessionId: req.sessionID,
     };
 
-    return this.consultationService.createConsultation(
+    return this.consultationService.createConsultationWithAudio(
       createConsultationDto,
+      audioFile?.buffer,
       requestInfo,
     );
   }

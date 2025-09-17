@@ -57,6 +57,7 @@ export interface LiveConsentKaraokeProps {
   words: string[]
   language?: string // e.g. 'en-US', 'ms-MY', 'zh-CN'
   onCompleted?: () => void
+  onAudioReady?: (audioBlob: Blob) => void
   className?: string
   maxSkips?: number // allow skipping up to N words without a match
   maxSkipFraction?: number // cap skips to fraction of total words (default 0.75)
@@ -79,6 +80,7 @@ export const LiveConsentKaraoke: React.FC<LiveConsentKaraokeProps> = ({
   words,
   language = 'en-US',
   onCompleted,
+  onAudioReady,
   className,
   maxSkips = Number.POSITIVE_INFINITY,
   maxSkipFraction = 0.75,
@@ -92,8 +94,13 @@ export const LiveConsentKaraoke: React.FC<LiveConsentKaraokeProps> = ({
   requirePDPAKeyword = false,
 }: LiveConsentKaraokeProps) => {
   const [isListening, setIsListening] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
   const [currentWordIndex, setCurrentWordIndex] = useState(0)
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
+  const [isRecorded, setIsRecorded] = useState(false)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
   const expectedWords = useMemo(() => words.map(normalize), [words])
   // If lines provided, compute how many word tokens from `expectedWords` belong to each line.
   // This aligns lines even if they contain no spaces by matching against concatenated normalized words.
@@ -319,21 +326,21 @@ export const LiveConsentKaraoke: React.FC<LiveConsentKaraokeProps> = ({
       // Gate per candidate
       if (requirePDPAKeyword && mapPDPAEquivalents(expectedSentence).includes('pdpa')) {
         const has = spokenCanonPresence.includes('pdpa')
-        try { console.log('[Karaoke][external] PDPA gate candidate', { li, expectedHas: true, spokenHas: has }) } catch {}
+        try { console.log('[Karaoke][external] PDPA gate candidate', { li, expectedHas: true, spokenHas: has }) } catch { }
         if (!has) continue
       }
       const sc = similarity(spoken, expectedSentence)
-      try { console.log('[Karaoke][external] candidate', { li, score: sc }) } catch {}
+      try { console.log('[Karaoke][external] candidate', { li, score: sc }) } catch { }
       if (sc > bestScore) { bestScore = sc; bestIdx = li }
     }
     const effThresh = candidateThreshold(bestIdx, sentenceThreshold)
-    try { console.log('[Karaoke][external] best', { bestIdx, bestScore, threshold: sentenceThreshold, effThresh }) } catch {}
+    try { console.log('[Karaoke][external] best', { bestIdx, bestScore, threshold: sentenceThreshold, effThresh }) } catch { }
     if (bestScore >= effThresh) {
       const endAbsBest = lineEnds[bestIdx] ?? expectedWords.length
       setCurrentWordIndex(prev => (endAbsBest > prev ? endAbsBest : prev))
       const isLastLine = bestIdx >= lines.length - 1
       if (isLastLine || endAbsBest >= expectedWords.length) {
-        try { console.log('[Karaoke][external] completed', { bestIdx, isLastLine, endAbsBest, total: expectedWords.length }) } catch {}
+        try { console.log('[Karaoke][external] completed', { bestIdx, isLastLine, endAbsBest, total: expectedWords.length }) } catch { }
         onCompleted?.()
       }
     }
@@ -342,13 +349,13 @@ export const LiveConsentKaraoke: React.FC<LiveConsentKaraokeProps> = ({
   // Basic stopword lists (lightweight). Extend as needed.
   const stopwords = useMemo(() => {
     const en = new Set([
-      'the','a','an','of','and','to','in','is','it','that','with','for','on','as','at','by','from','or','be','are','was','were','this','these','those','i','you','he','she','we','they','your','my','our','their'
+      'the', 'a', 'an', 'of', 'and', 'to', 'in', 'is', 'it', 'that', 'with', 'for', 'on', 'as', 'at', 'by', 'from', 'or', 'be', 'are', 'was', 'were', 'this', 'these', 'those', 'i', 'you', 'he', 'she', 'we', 'they', 'your', 'my', 'our', 'their'
     ])
     const ms = new Set([
-      'yang','dan','di','ke','dari','itu','ini','adalah','ialah','untuk','pada','sebagai','oleh','atau'
+      'yang', 'dan', 'di', 'ke', 'dari', 'itu', 'ini', 'adalah', 'ialah', 'untuk', 'pada', 'sebagai', 'oleh', 'atau'
     ])
     const zh = new Set([
-      '的','了','和','是','在','有','我','你','他','她','它','我们','你们','他们','与','及'
+      '的', '了', '和', '是', '在', '有', '我', '你', '他', '她', '它', '我们', '你们', '他们', '与', '及'
     ])
     if (language?.startsWith('ms')) return ms
     if (language?.startsWith('zh')) return zh
@@ -382,9 +389,34 @@ export const LiveConsentKaraoke: React.FC<LiveConsentKaraokeProps> = ({
 
   const stop = useCallback(() => {
     setIsListening(false)
+    setIsPaused(false)
     activeRef.current = false
-    try { recognitionRef.current?.stop() } catch {}
+    try { recognitionRef.current?.stop() } catch { }
+
+    // Stop audio recording and save
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop()
+    }
   }, [])
+
+  const reRecord = useCallback(() => {
+    setIsRecorded(false)
+    setAudioBlob(null)
+    transcriptFinalRef.current = ''
+    transcriptInterimRef.current = ''
+    audioChunksRef.current = []
+  }, [])
+
+  const pause = useCallback(() => {
+    setIsPaused(true)
+    try { recognitionRef.current?.stop() } catch { }
+  }, [])
+
+  const resume = useCallback(() => {
+    if (!isPaused) return
+    setIsPaused(false)
+    try { recognitionRef.current?.start() } catch { }
+  }, [isPaused])
 
   const start = useCallback(async () => {
     if (!('webkitSpeechRecognition' in window) && !("SpeechRecognition" in window)) {
@@ -393,7 +425,28 @@ export const LiveConsentKaraoke: React.FC<LiveConsentKaraokeProps> = ({
     }
 
     try {
-      await navigator.mediaDevices.getUserMedia({ audio: true })
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+
+      // Setup audio recording
+      audioChunksRef.current = []
+      const mediaRecorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = mediaRecorder
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data)
+        }
+      }
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' })
+        setAudioBlob(audioBlob)
+        setIsRecorded(true)
+        onAudioReady?.(audioBlob)
+        onCompleted?.()
+      }
+
+      mediaRecorder.start()
     } catch (e) {
       alert('Microphone permission denied')
       return
@@ -413,229 +466,25 @@ export const LiveConsentKaraoke: React.FC<LiveConsentKaraokeProps> = ({
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       const result = event.results[event.results.length - 1]
       const transcript = result[0].transcript
-      const tokens = transcript.split(/\s+/).map(normalize).filter(Boolean)
-      if (!tokens.length) return
 
-      // If a new resultIndex stream starts or this result is final, reset token counter
-      if (lastResultIndexRef.current === null || lastResultIndexRef.current !== event.resultIndex || result.isFinal) {
-        lastTokenCountRef.current = 0
-        lastResultIndexRef.current = event.resultIndex
-      }
-
-      // Reset processed count when resultIndex changes or transcript shrinks (common on finalization)
-      if (
-        lastResultIndexRef.current === null ||
-        (typeof event.resultIndex === 'number' && event.resultIndex !== lastResultIndexRef.current) ||
-        tokens.length < lastTokenCountRef.current
-      ) {
-        lastTokenCountRef.current = 0
-      }
-      lastResultIndexRef.current = (typeof event.resultIndex === 'number' ? event.resultIndex : lastResultIndexRef.current)
-
-      // Update rolling transcript buffers for sentence mode
+      // Just record and store the transcript, don't do voice tracking
       if (result.isFinal) {
         transcriptFinalRef.current = (transcriptFinalRef.current + ' ' + transcript).trim()
         transcriptInterimRef.current = ''
-      } else {
-        transcriptInterimRef.current = transcript
-      }
 
-      // Process only newly seen tokens to avoid re-advancing on repeated interim results
-      const startFrom = Math.min(lastTokenCountRef.current, tokens.length)
-      const newTokens = tokens.slice(startFrom)
-      lastTokenCountRef.current = tokens.length
-      if (!newTokens.length) return
+        // Keep transcript but don't wait for words
 
-      // Sentence-by-sentence mode: evaluate similarity to the current bullet line and advance whole line when threshold is met
-      if (sentenceMode && lines && lineStarts && lineEnds) {
-        let idx = currentWordIndex
-        const cur = idx
-        let lineIdx = 0
-        while (lineIdx + 1 < lineStarts.length && lineStarts[lineIdx + 1] <= cur) lineIdx++
-        const spoken = (transcriptFinalRef.current + ' ' + transcriptInterimRef.current).trim()
-        // Build candidates across a small window ahead
-        const buildExpected = (li: number) => {
-          const s = lineStarts[li] ?? 0
-          const e = lineEnds[li] ?? expectedWords.length
-          return lines[li] ?? words.slice(s, e).join(' ')
-        }
-        const spokenCanonPresence = mapPDPAEquivalents(collapseAcronymsOnly(spoken))
-        const windowEnd = lines.length - 1
-        const candidateThreshold = (li: number, base: number) => {
-          const exp = buildExpected(li)
-          const canon = mapLegalEquivalents(exp)
-          if (canon.includes('thirdparties') && canon.includes('without consent')) return Math.min(base, 0.6)
-          return base
-        }
-        let bestLi = lineIdx
-        let bestScore = -1
-        for (let li = lineIdx; li <= windowEnd; li++) {
-          const expectedSentence = buildExpected(li)
-          // Debug for each candidate
-          try { console.log('[Karaoke][mic] candidate line', li, { expected: expectedSentence, spoken: spoken.trim().slice(0,200) }) } catch {}
-          // PDPA gate per candidate
-          if (requirePDPAKeyword && mapPDPAEquivalents(expectedSentence).includes('pdpa')) {
-            const has = spokenCanonPresence.includes('pdpa')
-            try { console.log('[Karaoke][mic] PDPA gate candidate', { li, expectedHas: true, spokenHas: has }) } catch {}
-            if (!has) continue
-          }
-          const sc = similarity(spoken, expectedSentence)
-          try { console.log('[Karaoke][mic] candidate score', { li, score: sc }) } catch {}
-          if (sc > bestScore) { bestScore = sc; bestLi = li }
-        }
-        const effThresh = candidateThreshold(bestLi, sentenceThreshold)
-        try { console.log('[Karaoke][mic] best', { bestLi, bestScore, threshold: sentenceThreshold, effThresh }) } catch {}
-        if (bestScore >= effThresh) {
-          const endAbsBest = lineEnds[bestLi] ?? expectedWords.length
-          idx = endAbsBest
-          setCurrentWordIndex(prev => (idx > prev ? idx : prev))
-          // Reset rolling transcript so next sentence doesn't include previous content
-          transcriptFinalRef.current = ''
-          transcriptInterimRef.current = ''
-          const isLastLine = bestLi >= lines.length - 1
-          if (isLastLine || idx >= expectedWords.length) {
-            stop()
-            try { console.log('[Karaoke][mic] completed', { bestLi, isLastLine, idx, total: expectedWords.length }) } catch {}
-            onCompleted?.()
-          }
-        }
-        // In sentence mode we bypass per-word logic entirely
-        return
-      }
-
-      let idx = currentWordIndex
-      let progressed = false
-      for (let ti = 0; ti < newTokens.length; ti++) {
-        const token = newTokens[ti]
-        // Only look ahead a small window from the current index to prevent big jumps
-        let probe = idx
-        let matchedAt = -1
-        let window = MAX_LOOKAHEAD
-        // If we've stalled for a few events, briefly widen the window to recover alignment
-        if (stallCounterRef.current >= 2) window = Math.max(14, MAX_LOOKAHEAD)
-        while (probe < expectedWords.length && (probe - idx) <= window) {
-          const expected = expectedWords[probe]
-          const ok = requireExactRef.current ? (expected === token) : isCloseMatch(expected, token)
-          if (ok) { matchedAt = probe; break }
-          probe++
-        }
-        if (matchedAt !== -1) {
-          idx = matchedAt + 1
-          progressed = true
-          // Replenish skip budget slowly on successful progress
-          if (skipBudgetRef.current < maxSkips) skipBudgetRef.current += 1
-          // Reset any partial acronym progress if index moved
-          acronymStateRef.current = null
-          // If we required exact match and got one, turn it off
-          if (requireExactRef.current && matchedAt >= 0) requireExactRef.current = false
-          // Reset consecutive skip counter
-          consecutiveSkipsRef.current = 0
-          // Track line progress for safer snaps
-          if (lineStarts && lineEnds) {
-            // Determine current line by idx-1 (word we just matched)
-            const curAbs = idx - 1
-            let li = 0
-            while (li + 1 < lineStarts.length && lineStarts[li + 1] <= curAbs) li++
-            lineProgressRef.current = { lineIdx: li, matched: true }
-          }
-        } else {
-          // Special-case: ASR may spell acronyms as separate letters, e.g., "p d p a" for "pdpa"
-          const expected = expectedWords[idx]
-          if (expected && (KNOWN_ACRONYMS.has(expected) || /^[a-z]{2,6}$/.test(expected))) {
-            // Accept direct inclusion (e.g., token contains the acronym after normalization)
-            if (token.includes(expected)) {
-              idx = Math.min(idx + 1, expectedWords.length)
-              progressed = true
-              if (skipBudgetRef.current < maxSkips) skipBudgetRef.current += 1
-              acronymStateRef.current = null
-              continue
-            }
-
-            // Support partial accumulation across tokens/results
-            let state = acronymStateRef.current
-            if (!state || state.index !== idx) state = { index: idx, matched: 0 }
-            const nextChar = expected[state.matched]
-            if (/^[a-z]$/.test(token) && token === nextChar) {
-              state.matched += 1
-              acronymStateRef.current = state
-              if (state.matched === expected.length) {
-                idx = Math.min(idx + 1, expectedWords.length)
-                progressed = true
-                if (skipBudgetRef.current < maxSkips) skipBudgetRef.current += 1
-                acronymStateRef.current = null
-              }
-              // Either way, continue to next token without skipping
-              continue
-            } else {
-              // Mismatch; reset partial state (we may try skip or other strategies below)
-              acronymStateRef.current = null
-              // If we couldn't match an acronym, aggressively consume one skip to move past it
-              if (skipBudgetRef.current > 0) {
-                idx = Math.min(idx + 1, expectedWords.length)
-                skipBudgetRef.current -= 1
-                progressed = true
-                // After skipping, resync: process transcript fresh and widen lookahead briefly
-                lastTokenCountRef.current = 0
-                stallCounterRef.current = 3
-                // After a skip, require an exact match before allowing more fuzzy/snap
-                requireExactRef.current = true
-                consecutiveSkipsRef.current = Math.min(1, consecutiveSkipsRef.current + 1)
-                continue
-              }
-            }
-          }
-
-          if (skipBudgetRef.current > 0) {
-            // No match in window; permissively skip one expected word
-            const canSkip = !skipStopwordsOnly || isNonMeaningful(expected)
-            // Smart guard: do not skip anchors and do not allow more than 1 consecutive skip
-            const isAnchor = anchorIndices.has(idx)
-            const canConsecutive = consecutiveSkipsRef.current < 1
-            if (canSkip && !isAnchor && canConsecutive) {
-              idx = Math.min(idx + 1, expectedWords.length)
-              skipBudgetRef.current -= 1
-              // After skipping, resync: process transcript fresh and widen lookahead briefly
-              lastTokenCountRef.current = 0
-              stallCounterRef.current = 3
-              // After a skip, require an exact match before allowing more fuzzy/snap
-              requireExactRef.current = true
-              consecutiveSkipsRef.current = Math.min(1, consecutiveSkipsRef.current + 1)
-            }
-          }
-        }
-      }
-
-      // If we didn't progress, and we have bullets, try snapping to the start of the next bullet after repeated stalls
-      if (!progressed && lineStarts && stallCounterRef.current >= 2 && !requireExactRef.current) {
-        const cur = currentWordIndex
-        let lineIdx = 0
-        while (lineIdx + 1 < lineStarts.length && lineStarts[lineIdx + 1] <= cur) lineIdx++
-        const nextStart = lineStarts[lineIdx + 1]
-        // Only allow snap if we've matched at least one word in the current line (avoid cold jumps)
-        const safeToSnap = lineProgressRef.current.lineIdx === lineIdx && lineProgressRef.current.matched
-        if (typeof nextStart === 'number' && nextStart > cur && safeToSnap) {
-          idx = nextStart
-          progressed = true
-          // resync
-          lastTokenCountRef.current = 0
-          // After a snap, require an exact match before allowing more fuzzy/snap
-          requireExactRef.current = true
-          consecutiveSkipsRef.current = 0
-        }
-      }
-
-      if (idx !== currentWordIndex) {
-        stallCounterRef.current = 0
-        // Never allow backwards movement
-        setCurrentWordIndex(prev => (idx > prev ? idx : prev))
-        if (idx >= expectedWords.length) {
+        // Auto-complete after recording some speech
+        if (transcriptFinalRef.current.length > 50) {
           stop()
           onCompleted?.()
         }
       } else {
-        // no movement this event
-        stallCounterRef.current = Math.min(5, stallCounterRef.current + 1)
+        transcriptInterimRef.current = transcript
+        // Keep interim transcript
       }
+
+      // No voice tracking logic needed - just record and store transcript
     }
 
     recognition.onerror = () => {
@@ -644,10 +493,10 @@ export const LiveConsentKaraoke: React.FC<LiveConsentKaraokeProps> = ({
 
     recognition.onend = () => {
       // If we intentionally stopped (stop() sets isListening false), do nothing.
-      // Otherwise, auto-restart to continue sentence-by-sentence verification.
-      const finished = currentWordIndex >= expectedWords.length
+      // Otherwise, auto-restart to continue recording.
+      const finished = transcriptFinalRef.current.length > 50
       if (isListening && !finished) {
-        try { recognition.start() } catch {}
+        try { recognition.start() } catch { }
       } else {
         setIsListening(false)
       }
@@ -656,7 +505,7 @@ export const LiveConsentKaraoke: React.FC<LiveConsentKaraokeProps> = ({
     recognition.onaudioend = () => {
       // Chrome often ends after a pause. If still active, restart seamlessly.
       if (activeRef.current) {
-        try { recognition.start() } catch {}
+        try { recognition.start() } catch { }
       } else {
         setIsListening(false)
       }
@@ -685,31 +534,57 @@ export const LiveConsentKaraoke: React.FC<LiveConsentKaraokeProps> = ({
   }, [currentWordIndex, expectedWords, language, onCompleted, stop, maxSkips, maxSkipFraction, isNonMeaningful, skipStopwordsOnly])
 
   useEffect(() => () => {
-    try { recognitionRef.current?.stop() } catch {}
+    try { recognitionRef.current?.stop() } catch { }
   }, [])
 
   const completed = currentWordIndex >= expectedWords.length
 
   useEffect(() => {
     if (completed) {
-      try { console.log('[Karaoke][ui] rendering in-component completed badge') } catch {}
+      try { console.log('[Karaoke][ui] rendering in-component completed badge') } catch { }
     }
   }, [completed])
 
   return (
     <div className={className}>
       <div className="flex gap-2 mb-3 flex-col">
-        <Alert variant="default"><AlertDescription>Note: This step will be recorded to document that the patient has given informed consent under PDPA.</AlertDescription></Alert>
-        
-        {!isListening ? (
-          <button type="button" onClick={start} className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">
-            Start Live Verification
-          </button>
-        ) : (
-          <button type="button" onClick={stop} className="px-3 py-2 rounded bg-slate-200 hover:bg-slate-300">
-            Stop
-          </button>
-        )}
+        <Alert variant="default"><AlertDescription>Note: This step will be recorded to document that the patient has given informed consent under PDPA. The consent recording will be stored securely for compliance purposes.</AlertDescription></Alert>
+
+        <div className="flex gap-2">
+          {!isListening && !isPaused && !isRecorded ? (
+            <button type="button" onClick={start} className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">
+              Start Recording
+            </button>
+          ) : isRecorded ? (
+            <>
+              <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-300 rounded text-green-800">
+                <CheckCircle className="h-4 w-4" />
+                Audio Ready for Submission
+              </div>
+              <button type="button" onClick={reRecord} className="px-3 py-2 rounded bg-gray-600 text-white hover:bg-gray-700">
+                Re-record
+              </button>
+            </>
+          ) : isPaused ? (
+            <>
+              <button type="button" onClick={resume} className="px-3 py-2 rounded bg-green-600 text-white hover:bg-green-700">
+                Resume
+              </button>
+              <button type="button" onClick={stop} className="px-3 py-2 rounded bg-red-600 text-white hover:bg-red-700">
+                Stop & Save
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" onClick={pause} className="px-3 py-2 rounded bg-yellow-600 text-white hover:bg-yellow-700">
+                Pause
+              </button>
+              <button type="button" onClick={stop} className="px-3 py-2 rounded bg-red-600 text-white hover:bg-red-700">
+                Stop & Save
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className={
@@ -726,15 +601,7 @@ export const LiveConsentKaraoke: React.FC<LiveConsentKaraokeProps> = ({
                 const end = Math.min(start + count, words.length)
                 const slice = words.slice(start, end)
                 if (renderPerLine) {
-                  const completed = currentWordIndex >= end
-                  const current = currentWordIndex >= start && currentWordIndex < end && isListening
-                  const cls =
-                    'inline align-top px-1 rounded transition-colors duration-200 whitespace-pre-wrap ' +
-                    (completed
-                      ? 'bg-green-200 text-green-800'
-                      : current
-                      ? 'bg-yellow-200 text-yellow-800'
-                      : 'text-slate-700')
+                  const cls = 'inline align-top px-1 rounded transition-colors duration-200 whitespace-pre-wrap text-slate-700'
                   const lineText = (lines && lines[idx]) ? lines[idx] : (isChinese ? slice.join('') : slice.join(' '))
                   items.push(
                     <li key={idx} className="">
@@ -746,13 +613,7 @@ export const LiveConsentKaraoke: React.FC<LiveConsentKaraokeProps> = ({
                     <li key={idx} className="">
                       {slice.map((w, i) => {
                         const abs = start + i
-                        const cls =
-                          'inline-block mr-2 mb-1 px-1 rounded transition-colors duration-200 ' +
-                          (abs < currentWordIndex
-                            ? 'bg-green-200 text-green-800'
-                            : abs === currentWordIndex && isListening
-                            ? 'bg-yellow-200 text-yellow-800'
-                            : 'text-slate-600')
+                        const cls = 'inline-block mr-2 mb-1 px-1 rounded transition-colors duration-200 text-slate-600'
                         return (
                           <span key={abs} className={cls}>
                             {w}
@@ -777,8 +638,8 @@ export const LiveConsentKaraoke: React.FC<LiveConsentKaraokeProps> = ({
                     (completed
                       ? 'bg-green-200 text-green-800'
                       : current
-                      ? 'bg-yellow-200 text-yellow-800'
-                      : 'text-slate-700')
+                        ? 'bg-yellow-200 text-yellow-800'
+                        : 'text-slate-700')
                   const lineText = lines && lines[lineTokenCounts.length]
                     ? lines[lineTokenCounts.length]
                     : (isChinese ? slice.join('') : slice.join(' '))
@@ -797,8 +658,8 @@ export const LiveConsentKaraoke: React.FC<LiveConsentKaraokeProps> = ({
                           (abs < currentWordIndex
                             ? 'bg-green-200 text-green-800'
                             : abs === currentWordIndex && isListening
-                            ? 'bg-yellow-200 text-yellow-800'
-                            : 'text-slate-600')
+                              ? 'bg-yellow-200 text-yellow-800'
+                              : 'text-slate-600')
                         return (
                           <span key={abs} className={cls}>
                             {w}
@@ -821,8 +682,8 @@ export const LiveConsentKaraoke: React.FC<LiveConsentKaraokeProps> = ({
                 (i < currentWordIndex
                   ? 'bg-green-200 text-green-800'
                   : i === currentWordIndex && isListening
-                  ? 'bg-yellow-200 text-yellow-800'
-                  : 'text-slate-600')
+                    ? 'bg-yellow-200 text-yellow-800'
+                    : 'text-slate-600')
               }
             >
               {w}

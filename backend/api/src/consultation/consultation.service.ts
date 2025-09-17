@@ -25,6 +25,88 @@ export class ConsultationService {
     private speechProcessingService: SpeechProcessingService,
   ) {}
 
+  async createConsultationWithAudio(
+    createConsultationDto: CreateConsultationDto,
+    audioBuffer: Buffer,
+    requestInfo: { userId: string; ipAddress?: string; userAgent?: string; sessionId?: string }
+  ): Promise<Consultation> {
+    console.log({createConsultationDto});
+    const { patient_id, doctor_id, consent_id, consultation_date } = createConsultationDto;
+
+    // Verify doctor and patient exist
+    const doctor = await this.doctorRepository.findOne({ where: { id: doctor_id } });
+    const patient = await this.patientRepository.findOne({ where: { id: patient_id } });
+
+    if (!doctor) {
+      throw new NotFoundException('Doctor not found');
+    }
+    if (!patient) {
+      throw new NotFoundException('Patient not found');
+    }
+
+    // Verify consent if provided
+    if (consent_id) {
+      const consent = await this.consentRepository.findOne({ where: { id: consent_id } });
+      if (!consent) {
+        throw new NotFoundException('Consent not found');
+      }
+    }
+
+    if (!audioBuffer) {
+      throw new BadRequestException('Audio file is required');
+    }
+
+    try {
+      // Upload audio file FIRST
+      const s3Key = this.s3Service.generateFileKey('consultation', patient_id);
+      const uploadResult = await this.s3Service.uploadFile(
+        audioBuffer,
+        s3Key,
+        'audio/wav',
+        {
+          patientId: patient_id,
+          doctorId: doctor_id,
+          type: 'consultation',
+        }
+      );
+
+      // Create consultation record with audio URL already available
+      const consultation = this.consultationRepository.create({
+        patient_id,
+        doctor_id,
+        consent_id,
+        aws_audio_link: uploadResult.url,
+        file_size: uploadResult.size,
+        consultation_date: consultation_date ? new Date(consultation_date) : new Date(),
+        processing_status: ProcessingStatus.PENDING,
+      });
+
+      const finalConsultation = await this.consultationRepository.save(consultation);
+
+      // Log audit trail
+      await this.auditService.log(
+        requestInfo.userId,
+        UserType.DOCTOR,
+        'CREATE_CONSULTATION',
+        'consultation',
+        finalConsultation.id,
+        { patient_id, doctor_id, consent_id },
+        requestInfo.ipAddress,
+        requestInfo.userAgent,
+        requestInfo.sessionId,
+      );
+
+      // Start async audio processing for transcription and translation
+      this.processConsultationAudioFromS3(finalConsultation.id);
+
+      this.logger.log(`Consultation created with audio: ${finalConsultation.id} for patient ${patient_id}`);
+      return finalConsultation;
+    } catch (error) {
+      this.logger.error('Failed to create consultation with audio:', error);
+      throw new BadRequestException(`Failed to create consultation: ${error.message}`);
+    }
+  }
+
   async createConsultation(
     createConsultationDto: CreateConsultationDto,
     requestInfo: { userId: string; ipAddress?: string; userAgent?: string; sessionId?: string }
@@ -51,18 +133,13 @@ export class ConsultationService {
     }
 
     try {
-      // Generate placeholder S3 key for live recording
-      const s3Key = this.s3Service.generateFileKey('consultation', patient_id);
-      const placeholderUrl = `https://${process.env.AUDIO_S3_BUCKET || 'transcribe-audio-b1'}.s3.${process.env.AWS_DEFAULT_REGION || 'ap-northeast-2'}.amazonaws.com/${s3Key}`;
-      
-      // Create consultation record with placeholder audio link for live recording
+      // Create consultation record without audio (for cases without immediate audio upload)
       const consultation = this.consultationRepository.create({
         patient_id,
         doctor_id,
         consent_id,
-        aws_audio_link: placeholderUrl,
         consultation_date: consultation_date ? new Date(consultation_date) : new Date(),
-        processing_status: ProcessingStatus.PENDING, // Will be updated when live recording completes
+        processing_status: ProcessingStatus.PENDING,
       });
 
       const savedConsultation = await this.consultationRepository.save(consultation);

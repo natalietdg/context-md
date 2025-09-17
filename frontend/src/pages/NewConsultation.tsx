@@ -55,6 +55,22 @@ const NewConsultation: React.FC = () => {
   const [consentBlob, setConsentBlob] = useState<Blob | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const consentFileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Consent karaoke state
+  const [language, setLanguage] = useState<'en' | 'ms' | 'zh'>('en');
+  const [externalFinal, setExternalFinal] = useState<string>('');
+  const [externalInterim, setExternalInterim] = useState<string>('');
+  
+  // Consent script data
+  const currentScript = {
+    words: [
+      'I', 'consent', 'to', 'this', 'consultation', 'being', 'recorded', 'for', 'medical', 'purposes', 'and', 'data', 'protection', 'compliance'
+    ]
+  };
+  
+  const consentLines = [
+    'I consent to this consultation being recorded for medical purposes and data protection compliance.'
+  ];
 
   useEffect(() => {
     loadPatients();
@@ -334,6 +350,19 @@ const NewConsultation: React.FC = () => {
             <div className="space-y-4">
               <Label>Patient Consent (Required)</Label>
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="mb-4">
+                  <Label>Language</Label>
+                  <Select value={language} onValueChange={(value: 'en' | 'ms' | 'zh') => setLanguage(value)}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="en">English</SelectItem>
+                      <SelectItem value="ms">Bahasa Malaysia</SelectItem>
+                      <SelectItem value="zh">中文</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <p className="text-sm text-amber-800 mb-3">
                   Doctor: Please read the following consent statement to the patient. The system will detect when they have spoken the required percentage of the text.
                 </p>
@@ -342,31 +371,21 @@ const NewConsultation: React.FC = () => {
                 </p>
                 
                 <LiveConsentKaraoke
-                  words={[
-                    "This", "consultation", "will", "be", "recorded", "for", "medical", "documentation", "and", "quality", "purposes.",
-                    "Your", "health", "information", "will", "be", "processed", "according", "to", "PDPA", "and", "stored", "securely", "with", "authorized", "personnel", "only.",
-                    "You", "have", "rights", "to", "access,", "correct,", "or", "delete", "your", "data.",
-                    "The", "AI", "system", "will", "analyze", "this", "for", "medical", "summaries.",
-                    "Do", "you", "consent", "to", "proceed?"
-                  ]}
-                  lines={[
-                    "This consultation will be recorded for medical documentation and quality purposes.",
-                    "Your health information will be processed according to PDPA and stored securely with authorized personnel only.",
-                    "You have rights to access, correct, or delete your data.",
-                    "The AI system will analyze this for medical summaries.",
-                    "Do you consent to proceed?"
-                  ]}
-                  language="en-US"
+                  words={currentScript?.words}
+                  lines={consentLines}
+                  language={language === 'ms' ? 'ms-MY' : (language === 'zh') ? 'zh-CN' : 'en-US'}
                   sentenceMode={true}
                   sentenceThreshold={0.7}
+                  externalFinal={externalFinal}
+                  externalInterim={externalInterim}
                   ignoreBracketed={true}
                   requirePDPAKeyword={true}
+                  onAudioReady={(audioBlob) => {
+                    setConsentBlob(audioBlob);
+                    console.log('Consent audio ready:', audioBlob);
+                  }}
                   onCompleted={() => {
                     console.log('Consent completed');
-                    // LiveConsentKaraoke doesn't provide audio blob, use manual recording
-                    if (consentBlob) {
-                      console.log('Consent audio already recorded');
-                    }
                   }}
                   className="mt-4"
                 />
@@ -400,17 +419,6 @@ const NewConsultation: React.FC = () => {
                       Start Recording
                     </>
                   )}
-                </Button>
-
-                <span className="text-gray-500">or</span>
-
-                <Button
-                  variant="outline"
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload File
                 </Button>
                 <input
                   ref={fileInputRef}
