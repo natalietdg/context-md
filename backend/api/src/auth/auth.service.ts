@@ -5,12 +5,58 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Doctor, Patient, User, ProfileType } from '../entities';
 import { LoginDto, RegisterDoctorDto } from './dto';
+import * as crypto from 'crypto';
 
+const ENCRYPTION_KEY = (() => {
+  const key = process.env.DB_ENCRYPTION_KEY || 'dev-key-32-chars-long-change-me!!';
+  // Ensure key is exactly 32 bytes for AES-256
+  if (Buffer.from(key).length !== 32) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('DB_ENCRYPTION_KEY must be exactly 32 characters/bytes for AES-256');
+    }
+    // Pad or truncate dev key to 32 bytes
+    return key.padEnd(32, '0').substring(0, 32);
+  }
+  return key;
+})();
+
+const ALGORITHM = 'aes-256-cbc'
 export interface JwtPayload {
   sub: string;
   email: string;
   role: 'doctor' | 'patient';
   name: string;
+}
+
+function encryptDeterministic(text) {
+  const hash = crypto.createHash('sha256').update(text + ENCRYPTION_KEY).digest();
+  const iv = hash.slice(0, 16);
+  const cipher = crypto.createCipheriv(ALGORITHM, ENCRYPTION_KEY, iv);
+  let encrypted = cipher.update(text, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  return iv.toString('hex') + ':' + encrypted;
+}
+
+function decrypt(encryptedText: string): string {
+  if (!encryptedText || !encryptedText.includes(':')) {
+    return encryptedText || '';
+  }
+
+  const parts = encryptedText.split(':');
+  if (parts.length !== 2) {
+    return encryptedText;
+  }
+
+  try {
+    const iv = Buffer.from(parts[0], 'hex');
+    const encrypted = parts[1];
+    const decipher = crypto.createDecipheriv(ALGORITHM, ENCRYPTION_KEY, iv);
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch (error) {
+    return encryptedText;
+  }
 }
 
 @Injectable()
@@ -23,28 +69,34 @@ export class AuthService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private jwtService: JwtService,
-  ) {}
+  ) { }
 
   async validateUser(email: string, password: string, role: 'doctor' | 'patient') {
+    console.log({ email, password })
     // Find all users with the specified role
     const users = await this.userRepository.find({
-      where: { 
+      where: {
         profile_type: role === 'doctor' ? ProfileType.DOCTOR : ProfileType.PATIENT,
-        is_active: true 
+        is_active: true,
       }
     });
-
-    // Find user with matching email (need to decrypt each to compare)
-    let matchingUser = null;
+    // Find user with matching email (encrypt input email for comparison)
+    let matchingUser: any = null;
+    // const encryptedInputEmail = encryptDeterministic(email);
     for (const user of users) {
-      if (user.email === email) {
+      // Compare against encrypted email stored in _email field
+      if ((user as any)._email === email) {
         matchingUser = user;
         break;
       }
     }
-
+    
     // Check if user exists and password matches
-    if (matchingUser && await bcrypt.compare(password, matchingUser.password_hash)) {
+    if (!matchingUser || !matchingUser.password_hash) {
+      return null;
+    }
+    // const compared = await encryptDeterministic(password)
+    if (matchingUser && matchingUser.password_hash === password) {
       // Get the profile entity (doctor or patient)
       let profile;
       if (role === 'doctor') {
@@ -67,7 +119,7 @@ export class AuthService {
 
   async login(loginDto: LoginDto) {
     const { email, password, role } = loginDto;
-    
+
     const user = await this.validateUser(email, password, role);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
@@ -89,9 +141,9 @@ export class AuthService {
         name: user.name,
         email: user.email,
         role,
-        ...(role === 'doctor' && { 
+        ...(role === 'doctor' && {
           employee_id: user.employee_id,
-          department: user.department 
+          department: user.department
         }),
       },
     };
@@ -141,14 +193,14 @@ export class AuthService {
   }
 
   async findDoctorById(id: string): Promise<Doctor | null> {
-    return this.doctorRepository.findOne({ 
-      where: { id, is_active: true } 
+    return this.doctorRepository.findOne({
+      where: { id, is_active: true }
     });
   }
 
   async findPatientById(id: string): Promise<Patient | null> {
-    return this.patientRepository.findOne({ 
-      where: { id, is_active: true } 
+    return this.patientRepository.findOne({
+      where: { id, is_active: true }
     });
   }
 }

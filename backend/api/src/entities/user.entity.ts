@@ -60,13 +60,18 @@ export class User {
   })();
   private static readonly ALGORITHM = 'aes-256-cbc';
 
-  // Email getter/setter with encryption
+  // Email getter/setter with deterministic encryption
   get email(): string {
     return this.decrypt(this._email);
   }
 
   set email(value: string) {
-    this._email = this.encrypt(value);
+    // Only encrypt if not already encrypted (doesn't contain ':')
+    if (value && !value.includes(':')) {
+      this._email = this.encryptDeterministic(value);
+    } else {
+      this._email = value;
+    }
   }
 
   // Password hash getter/setter with encryption
@@ -75,12 +80,19 @@ export class User {
   }
 
   set password_hash(value: string) {
-    this._password_hash = this.encrypt(value);
+    // Only encrypt if not already encrypted (doesn't contain ':')
+    if (value && !value.includes(':')) {
+      this._password_hash = this.encryptDeterministic(value);
+    } else {
+      this._password_hash = value;
+    }
   }
 
-  // Encryption helper methods
-  private encrypt(text: string): string {
-    const iv = crypto.randomBytes(16);
+  // Deterministic encryption for emails (same input = same output)
+  private encryptDeterministic(text: string): string {
+    // Use a fixed IV derived from the text itself for deterministic encryption
+    const hash = crypto.createHash('sha256').update(text + User.ENCRYPTION_KEY).digest();
+    const iv = hash.slice(0, 16); // Use first 16 bytes as IV
     const cipher = crypto.createCipheriv(User.ALGORITHM, User.ENCRYPTION_KEY, iv);
     let encrypted = cipher.update(text, 'utf8', 'hex');
     encrypted += cipher.final('hex');
