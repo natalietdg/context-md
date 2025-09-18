@@ -20,7 +20,9 @@ import {
   MicOff,
   Upload,
   FileAudio,
-  Shield
+  Shield,
+  Pause,
+  Play
 } from 'lucide-react';
 import { LiveConsentKaraoke } from '../components/LiveConsentKaraoke';
 
@@ -47,8 +49,10 @@ const NewConsultation: React.FC = () => {
   const [isLoadingPatients, setIsLoadingPatients] = useState(true);
   const [error, setError] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [recordingChunks, setRecordingChunks] = useState<BlobPart[]>([]);
   // Consent recording state (separate from consultation audio)
   const [isRecordingConsent, setIsRecordingConsent] = useState(false);
   const [consentMediaRecorder, setConsentMediaRecorder] = useState<MediaRecorder | null>(null);
@@ -105,7 +109,10 @@ const NewConsultation: React.FC = () => {
       const chunks: BlobPart[] = [];
 
       recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) chunks.push(event.data);
+        if (event.data.size > 0) {
+          chunks.push(event.data);
+          setRecordingChunks(prev => [...prev, event.data]);
+        }
       };
 
       recorder.onstop = () => {
@@ -117,10 +124,26 @@ const NewConsultation: React.FC = () => {
       recorder.start();
       setMediaRecorder(recorder);
       setIsRecording(true);
+      setIsPaused(false);
+      setRecordingChunks([]);
       setError('');
     } catch (e) {
       console.error('Mic access failed', e);
       setError('Failed to access microphone');
+    }
+  };
+
+  const pauseRecording = () => {
+    if (mediaRecorder && isRecording && !isPaused) {
+      mediaRecorder.pause();
+      setIsPaused(true);
+    }
+  };
+
+  const resumeRecording = () => {
+    if (mediaRecorder && isRecording && isPaused) {
+      mediaRecorder.resume();
+      setIsPaused(false);
     }
   };
 
@@ -129,6 +152,7 @@ const NewConsultation: React.FC = () => {
       mediaRecorder.stop();
       setMediaRecorder(null);
       setIsRecording(false);
+      setIsPaused(false);
     }
   };
 
@@ -402,7 +426,7 @@ const NewConsultation: React.FC = () => {
             {/* Audio Recording (Required) */}
             <div className="space-y-2">
               <Label>Consultation Audio (Required)</Label>
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
                 <Button
                   onClick={isRecording ? stopRecording : startRecording}
                   className={isRecording ? 'bg-red-600 hover:bg-red-700' : ''}
@@ -420,6 +444,38 @@ const NewConsultation: React.FC = () => {
                     </>
                   )}
                 </Button>
+                
+                {isRecording && (
+                  <Button
+                    onClick={isPaused ? resumeRecording : pauseRecording}
+                    variant="outline"
+                    className={isPaused ? 'bg-green-50 border-green-300 hover:bg-green-100' : 'bg-yellow-50 border-yellow-300 hover:bg-yellow-100'}
+                    type="button"
+                  >
+                    {isPaused ? (
+                      <>
+                        <Play className="h-4 w-4 mr-2" />
+                        Resume
+                      </>
+                    ) : (
+                      <>
+                        <Pause className="h-4 w-4 mr-2" />
+                        Pause
+                      </>
+                    )}
+                  </Button>
+                )}
+                
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  variant="outline"
+                  type="button"
+                  disabled={isRecording}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload File
+                </Button>
+                
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -428,6 +484,13 @@ const NewConsultation: React.FC = () => {
                   className="hidden"
                 />
               </div>
+              
+              {isRecording && (
+                <div className={`text-sm flex items-center space-x-2 ${isPaused ? 'text-yellow-600' : 'text-red-600'}`}>
+                  <div className={`w-2 h-2 rounded-full ${isPaused ? 'bg-yellow-500' : 'bg-red-500 animate-pulse'}`}></div>
+                  <span>{isPaused ? 'Recording paused' : 'Recording in progress...'}</span>
+                </div>
+              )}
 
 
               {audioBlob && (

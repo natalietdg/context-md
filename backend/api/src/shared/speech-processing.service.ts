@@ -60,21 +60,18 @@ export class SpeechProcessingService {
 
   // --- CLI fallback helpers ---
   private resolveRepoRoot(): string {
-    // Try current working directory first (root when running start:prod)
-    const cwd = process.cwd();
-    if (fs.existsSync(path.join(cwd, 'pipeline.py'))) return cwd;
-    // If running from backend/api, go up two levels
-    const upTwo = path.resolve(cwd, '..', '..');
-    if (fs.existsSync(path.join(upTwo, 'pipeline.py'))) return upTwo;
-    // As a last resort, use relative to compiled dist directory
-    const fromDist = path.resolve(__dirname, '..', '..', '..', '..');
-    if (fs.existsSync(path.join(fromDist, 'pipeline.py'))) return fromDist;
-    return cwd; // fallback to cwd
+    const repoRoot = process.env.REPO_ROOT || path.resolve(__dirname, '..', '..', '..', '..');
+    return repoRoot;
   }
 
-  private resolvePipelinePath(repoRoot: string): string {
-    const candidate = path.join(repoRoot, 'pipeline.py');
-    return candidate;
+  private resolvePipelinePath(): string {
+    const pipelinePath = process.env.PIPELINE_PATH || path.join(this.resolveRepoRoot(), 'pipeline.py');
+    return pipelinePath;
+  }
+
+  private resolvePythonBin(): string {
+    const pythonBin = process.env.VENV_PYTHON || path.join(this.resolveRepoRoot(), 'venv', 'bin', 'python3');
+    return pythonBin;
   }
 
   private async runPipelineCli(audioBuffer: Buffer): Promise<{
@@ -91,8 +88,8 @@ export class SpeechProcessingService {
     await fs.promises.writeFile(audioPath, audioBuffer);
 
     try {
-      const pythonBin = path.join(process.cwd(), '..', '..', 'venv', 'bin', 'python3');
-      const pipelinePath = path.join(process.cwd(), '..', '..', 'pipeline.py');
+      const pythonBin = this.resolvePythonBin();
+      const pipelinePath = this.resolvePipelinePath();
       
       this.logger.log(`Running pipeline: ${pythonBin} ${pipelinePath} ${audioPath}`);
       

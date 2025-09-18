@@ -1,1 +1,1 @@
-web: cd backend/api && node dist/main.js
+web: ./scripts/start.sh

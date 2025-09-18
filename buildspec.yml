@@ -4,21 +4,54 @@ phases:
   install:
     runtime-versions:
       nodejs: 20
+      python: 3.11
     commands:
-      - echo "Installing dependencies"
-      - pwd
-      - ls -la
-      - find . -name "backend" -type d
-      - find . -name "*.json" | head -10
-      - npm --prefix backend/api install
-      
+      - echo "Install Node dev deps for build (not shipping node_modules)"
+      - curl -o backend/api/rds-ca-2019-root.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+      - npm --prefix backend/api ci
+
+      - echo "Create repo-root Python venv and install requirements"
+      - python3 -m venv venv
+      - source venv/bin/activate
+      - export VENV_PATH="$(pwd)/venv"
+      - export PATH="$VENV_PATH/bin:$PATH"
+      - pip install --upgrade pip setuptools wheel
+      - pip install -r requirements.txt
+
   build:
     commands:
-      - echo "Building backend"
+      - echo "Build Node backend"
       - npm --prefix backend/api run build
+      - echo "Copy RDS CA cert into dist/"
+      - mkdir -p backend/api/dist
+      - cp backend/api/rds-ca-2019-root.pem backend/api/dist/
       - ls -la backend/api/dist/
 
 artifacts:
+  # IMPORTANT: artifact root is repo root so EB will see repo-root Procfile & scripts/start.sh
+  base-directory: .
   files:
-    - 'backend/api/dist/**/*'
-    - 'backend/api/package.json'
+    - backend/api/dist/**/*
+    - backend/api/package.json
+    - backend/api/package-lock.json
+    - Procfile                # repo-root Procfile (web: ./scripts/start.sh)
+    - scripts/**/*
+    - rds-ca-2019-root.pem
+    - pipeline.py
+    - whisperX/**/*
+    - sealion/**/*
+    - clinical_extractor_llm/**/*
+    - aws/**/*
+    - requirements.txt
+
+# keep secondary artifact only if you need a separate pipeline artifact; optional
+secondary-artifacts:
+  pipeline:
+    base-directory: .
+    files:
+      - pipeline.py
+      - whisperX/**/*
+      - sealion/**/*
+      - clinical_extractor_llm/**/*
+      - aws/**/*
+      - requirements.txt
