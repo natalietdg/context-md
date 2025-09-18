@@ -79,7 +79,7 @@ export class PythonWorkerService extends EventEmitter implements OnModuleInit, O
 
         this.proc.stdout.on('data', (chunk: string) => this.handleMessage(chunk));
         this.proc.stderr?.on('data', (data) => {
-          const message = data.toString().trim();
+          const message = this.stripAnsiCodes(data.toString().trim());
           if (message) {
             this.logger.log(`Python worker stderr: ${message}`);
           }
@@ -160,12 +160,19 @@ export class PythonWorkerService extends EventEmitter implements OnModuleInit, O
     this.ready = false;
   }
 
+  private stripAnsiCodes(text: string): string {
+    // Remove ANSI escape sequences (colors, formatting, etc.)
+    return text.replace(/\x1b\[[0-9;]*m/g, '');
+  }
+
   private handleMessage(data: string) {
     const lines = data.split('\n').filter(line => line.trim());
     
     for (const line of lines) {
       try {
-        const message = JSON.parse(line);
+        // Strip ANSI color codes before parsing JSON
+        const cleanLine = this.stripAnsiCodes(line);
+        const message = JSON.parse(cleanLine);
         
         if (message.job_id) {
           // Job result

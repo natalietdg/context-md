@@ -24,6 +24,11 @@ from typing import Dict, Any, Optional
 from pathlib import Path
 import os
 
+# Disable colored output to prevent ANSI escape sequences
+os.environ['NO_COLOR'] = '1'
+os.environ['ANSI_COLORS_DISABLED'] = '1'
+os.environ['FORCE_COLOR'] = '0'
+
 # Add project directories to Python path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
