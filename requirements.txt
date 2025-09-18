@@ -37,5 +37,4 @@ pathlib2; python_version < "3.4"
 # Optional: HuggingFace Hub for model downloads (already included in transformers)
 # huggingface-hub>=0.16.0  # Not needed - included with transformers
 
-# WhisperX - install first to handle PyTorch dependencies
-git+https://github.com/m-bain/whisperx.git 
+# Note: WhisperX installed separately via .ebextensions/01_install_whisperx.config 
