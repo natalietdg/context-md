@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -74,6 +74,9 @@ function decrypt(encryptedText: string): string {
 
 @Injectable()
 export class AuthService {
+
+  private readonly logger = new Logger(AuthService.name);
+    
   constructor(
     @InjectRepository(Doctor)
     private doctorRepository: Repository<Doctor>,
@@ -93,16 +96,25 @@ export class AuthService {
         is_active: true,
       }
     });
+    
     // Find user with matching email (encrypt input email for comparison)
     let matchingUser: any = null;
     // const encryptedInputEmail = encryptDeterministic(email);
     for (const user of users) {
       // Compare against encrypted email stored in _email field
+      this.logger.log('user.email', user.email);
+
+      this.logger.log('email', email);
+
+      this.logger.log('user.password_hash', user.password_hash);
+      this.logger.log('password', password);
       if (user.email === email) {
         matchingUser = user;
         break;
       }
     }
+
+    this.logger.log('matchingUser', matchingUser);
     // Check if user exists and password matches
     if (!matchingUser || !matchingUser.password_hash || matchingUser.password_hash !== password) {
       return null;
