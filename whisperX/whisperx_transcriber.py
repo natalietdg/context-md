@@ -207,10 +207,131 @@ class WhisperXTranscriber:
         return result, os.path.basename(audio_file)
 
     def extract_clean_format(self, result: Dict[str, Any]) -> Dict[str, Any]:
-        # [unchanged] your existing implementation works fine — omitted here for brevity
-        # (you can paste your existing extract_clean_format body)
-        ...
+        """Extract clean format from WhisperX results"""
+        # Extract unique languages
+        languages = set()
+        
+        # Add main language if available
+        if 'language' in result:
+            languages.add(result['language'])
+        if 'detected_language' in result:
+            languages.add(result['detected_language'])
+        
+        # Process segments to create turns
+        turns = []
+        turn_id = 1
+        current_speaker = None
+        current_text_parts = []
+        
+        # Process segments
+        for segment in result.get('segments', []):
+            segment_text = segment.get('text', '').strip()
+            if not segment_text:
+                continue
+            
+            # Get speaker from words if available
+            segment_speaker = None
+            words = segment.get('words', [])
+            
+            if words:
+                # Find the most common speaker in this segment
+                speaker_counts = {}
+                for word in words:
+                    if 'speaker' in word and word['speaker']:
+                        speaker = word['speaker']
+                        speaker_counts[speaker] = speaker_counts.get(speaker, 0) + 1
+                
+                if speaker_counts:
+                    # Use the most frequent speaker in this segment
+                    segment_speaker = max(speaker_counts.items(), key=lambda x: x[1])[0]
+            
+            # If no speaker detected, use a default
+            if not segment_speaker:
+                segment_speaker = "SPEAKER_UNKNOWN"
+            
+            # Check if this is a new turn (different speaker)
+            if segment_speaker != current_speaker:
+                # Save previous turn if exists
+                if current_speaker is not None and current_text_parts:
+                    turns.append({
+                        "turn_id": turn_id,
+                        "speaker": current_speaker,
+                        "text": " ".join(current_text_parts).strip()
+                    })
+                    turn_id += 1
+                
+                # Start new turn
+                current_speaker = segment_speaker
+                current_text_parts = [segment_text]
+            else:
+                # Same speaker, append to current turn
+                current_text_parts.append(segment_text)
+        
+        # Don't forget the last turn
+        if current_speaker is not None and current_text_parts:
+            turns.append({
+                "turn_id": turn_id,
+                "speaker": current_speaker,
+                "text": " ".join(current_text_parts).strip()
+            })
+        
+        # Convert to sorted list for consistent output
+        languages_list = sorted(list(languages)) if languages else ["unknown"]
+        
+        return {
+            "languages_detected": languages_list,
+            "turns": turns
+        }
     
     def save_results(self, result: Dict[str, Any], base_filename: str):
-        # [unchanged] your existing implementation works fine — omitted here for brevity
-        ...
+        """Save transcription results to both raw and lean JSON formats"""
+        import time
+        import json
+        
+        # Generate timestamped filename
+        timestamp = int(time.time())
+        base_name = Path(base_filename).stem
+        
+        # File paths for both formats
+        raw_json_file = self.output_dir / f"{base_name}_whisperx_{timestamp}.json"
+        lean_json_file = self.output_dir_lean / f"{base_name}_lean_{timestamp}.json"
+        
+        try:
+            # Save raw JSON result (existing format)
+            with open(raw_json_file, 'w', encoding='utf-8') as f:
+                json.dump(result, f, indent=2, ensure_ascii=False)
+            print(f"\n💾 Raw results saved to: {raw_json_file}")
+            
+            # Extract and save clean format
+            clean_result = self.extract_clean_format(result)
+            with open(lean_json_file, 'w', encoding='utf-8') as f:
+                json.dump(clean_result, f, indent=2, ensure_ascii=False)
+            print(f"💾 Clean results saved to: {lean_json_file}")
+            
+            # Print summary
+            if 'segments' in result:
+                total_segments = len(result['segments'])
+                speakers = set()
+                total_text = []
+                
+                # Extract speakers from segments
+                for segment in result['segments']:
+                    words = segment.get('words', [])
+                    for word in words:
+                        if 'speaker' in word and word['speaker']:
+                            speakers.add(word['speaker'])
+                    total_text.append(segment.get('text', ''))
+                
+                print(f"\n📊 Summary:")
+                print(f"   Segments: {total_segments}")
+                print(f"   Speakers: {len(speakers)} ({', '.join(sorted(speakers)) if speakers else 'None'})")
+                print(f"   Language: {result.get('language', 'Unknown')}")
+                print(f"   Turns: {len(clean_result['turns'])}")
+                print(f"   Languages detected: {clean_result['languages_detected']}")
+                print(f"   Total text length: {len(' '.join(total_text))} characters")
+            
+            return str(raw_json_file), str(lean_json_file)
+            
+        except Exception as e:
+            print(f"❌ Failed to save results: {e}")
+            raise
