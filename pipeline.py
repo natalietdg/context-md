@@ -22,23 +22,48 @@ import time
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple
 
+print("🔍 DEBUG: Starting pipeline.py")
+print(f"🔍 DEBUG: Python version: {sys.version}")
+print(f"🔍 DEBUG: Current working directory: {os.getcwd()}")
+print(f"🔍 DEBUG: Script location: {__file__}")
+
 # Add project directories to Python path
 project_root = Path(__file__).parent
+print(f"🔍 DEBUG: Project root: {project_root}")
+
 sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(project_root / "aws"))
 sys.path.insert(0, str(project_root / "whisperX"))
 sys.path.insert(0, str(project_root / "sealion"))
 sys.path.insert(0, str(project_root / "clinical_extractor_llm"))
 
+print(f"🔍 DEBUG: Python path: {sys.path[:6]}")  # Show first 6 entries
+
 # Import pipeline components
+print("🔍 DEBUG: Attempting imports...")
 try:
+    print("🔍 DEBUG: Importing S3AudioDownloader...")
     from aws.s3_downloader import S3AudioDownloader
+    print("✅ DEBUG: S3AudioDownloader imported successfully")
+    
+    print("🔍 DEBUG: Importing WhisperXTranscriber...")
     from whisperX.whisperx_transcriber import WhisperXTranscriber
+    print("✅ DEBUG: WhisperXTranscriber imported successfully")
+    
+    print("🔍 DEBUG: Importing SEALionTranslator...")
     from sealion.translator import SEALionTranslator
+    print("✅ DEBUG: SEALionTranslator imported successfully")
+    
+    print("🔍 DEBUG: Importing ClinicalExtractorLLM...")
     from clinical_extractor_llm.extractor import ClinicalExtractorLLM
+    print("✅ DEBUG: ClinicalExtractorLLM imported successfully")
+    
 except ImportError as e:
     print(f"❌ Import error: {e}")
+    print(f"🔍 DEBUG: Failed import details: {type(e).__name__}: {str(e)}")
     print("Make sure all required dependencies are installed.")
+    import traceback
+    traceback.print_exc()
     sys.exit(1)
 
 
@@ -279,18 +304,18 @@ class AudioProcessingPipeline:
                 print(f"📋 Summary: {clinical_result['summary']}")
             
             return str(clinical_path)
-            
         except Exception as e:
             print(f"❌ Clinical extraction failed: {e}")
             raise
     
-    def process_audio(self, audio_input: str,
+    def process_audio(self, 
+                     audio_input: str,
                      language: str = "auto",
-                     model_size: str = "large-v2",
+                     model_size: str = "base",
                      min_speakers: Optional[int] = None,
                      max_speakers: Optional[int] = None,
                      skip_translation: bool = False,
-                     skip_clinical: bool = False) -> Dict[str, str]:
+                     skip_clinical: bool = False) -> Dict[str, Any]:
         """
         Process audio through the complete pipeline
         
@@ -317,36 +342,75 @@ class AudioProcessingPipeline:
         print("=" * 60)
         
         try:
+            print("🔍 DEBUG: Starting pipeline steps...")
+            
             # Step 1: Download audio (if S3 path)
+            print("🔍 DEBUG: Step 1 - Audio handling")
             if audio_input.startswith('s3://') or (not Path(audio_input).exists() and self.s3_downloader):
+                print(f"🔍 DEBUG: Downloading from S3: {audio_input}")
                 audio_path = self.download_audio(audio_input)
                 results['downloaded_audio'] = audio_path
+                print(f"🔍 DEBUG: Downloaded to: {audio_path}")
             else:
                 audio_path = audio_input
+                print(f"🔍 DEBUG: Using local audio file: {audio_path}")
                 print(f"📁 Using local audio file: {audio_path}")
                 if not Path(audio_path).exists():
+                    print(f"🔍 DEBUG: File does not exist: {audio_path}")
                     raise FileNotFoundError(f"Audio file not found: {audio_path}")
+                print(f"🔍 DEBUG: File exists, size: {Path(audio_path).stat().st_size} bytes")
             
             # Step 2: Transcribe audio
-            raw_transcript, lean_transcript = self.transcribe_audio(
-                audio_path, language, model_size, min_speakers, max_speakers
-            )
-            results['raw_transcript'] = raw_transcript
-            results['lean_transcript'] = lean_transcript
+            print("🔍 DEBUG: Step 2 - Transcription")
+            print(f"🔍 DEBUG: Calling transcribe_audio with: {audio_path}, {language}, {model_size}")
+            try:
+                raw_transcript, lean_transcript = self.transcribe_audio(
+                    audio_path, language, model_size, min_speakers, max_speakers
+                )
+                print(f"🔍 DEBUG: Transcription completed successfully")
+                print(f"🔍 DEBUG: Raw transcript: {raw_transcript}")
+                print(f"🔍 DEBUG: Lean transcript: {lean_transcript}")
+                results['raw_transcript'] = raw_transcript
+                results['lean_transcript'] = lean_transcript
+            except Exception as e:
+                print(f"🔍 DEBUG: Transcription failed with error: {e}")
+                import traceback
+                traceback.print_exc()
+                raise
             
             # Step 3: Translate transcript (optional)
+            print("🔍 DEBUG: Step 3 - Translation")
             if not skip_translation:
-                translated_transcript = self.translate_transcript(lean_transcript)
-                results['translated_transcript'] = translated_transcript
+                print(f"🔍 DEBUG: Starting translation of: {lean_transcript}")
+                try:
+                    translated_transcript = self.translate_transcript(lean_transcript)
+                    print(f"🔍 DEBUG: Translation completed: {translated_transcript}")
+                    results['translated_transcript'] = translated_transcript
+                except Exception as e:
+                    print(f"🔍 DEBUG: Translation failed with error: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    raise
             else:
+                print("🔍 DEBUG: Skipping translation step")
                 print("\n⏭️  Skipping translation step")
                 translated_transcript = lean_transcript
             
             # Step 4: Extract clinical information (optional)
+            print("🔍 DEBUG: Step 4 - Clinical extraction")
             if not skip_clinical:
-                clinical_result = self.extract_clinical_info(translated_transcript)
-                results['clinical_extraction'] = clinical_result
+                print(f"🔍 DEBUG: Starting clinical extraction of: {translated_transcript}")
+                try:
+                    clinical_result = self.extract_clinical_info(translated_transcript)
+                    print(f"🔍 DEBUG: Clinical extraction completed: {clinical_result}")
+                    results['clinical_extraction'] = clinical_result
+                except Exception as e:
+                    print(f"🔍 DEBUG: Clinical extraction failed with error: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    raise
             else:
+                print("🔍 DEBUG: Skipping clinical extraction step")
                 print("\n⏭️  Skipping clinical extraction step")
             
             # Pipeline completed successfully
