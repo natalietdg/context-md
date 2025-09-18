@@ -108,7 +108,7 @@ export class AuthService {
 
       this.logger.log('user.password_hash', user.password_hash);
       this.logger.log('password', password);
-      if (user.email === email) {
+      if (user.email === encryptDeterministic(email)) {
         matchingUser = user;
         break;
       }
@@ -116,11 +116,12 @@ export class AuthService {
 
     this.logger.log('matchingUser', matchingUser);
     // Check if user exists and password matches
-    if (!matchingUser || !matchingUser.password_hash || matchingUser.password_hash !== password) {
+    const encryptedPassword = encryptDeterministic(password);
+    if (!matchingUser || !matchingUser.password_hash || matchingUser.password_hash !== encryptedPassword) {
       return null;
     }
     // const compared = await encryptDeterministic(password)
-    if (matchingUser && matchingUser.password_hash === password) {
+    if (matchingUser && matchingUser.password_hash === encryptedPassword) {
       // Get the profile entity (doctor or patient)
       let profile;
       if (role === 'doctor') {
@@ -131,7 +132,7 @@ export class AuthService {
 
       return {
         id: matchingUser.profile_id,
-        email: matchingUser.email,
+        email: profile.email,
         role,
         name: profile?.name,
         employee_id: profile?.employee_id,
