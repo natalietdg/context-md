@@ -468,7 +468,7 @@ const History: React.FC = () => {
                         <div className="flex justify-between items-start mb-3">
                           <div>
                             <h4 className="font-semibold text-gray-900">
-                              {format(new Date(consultation.consultation_date), 'MMMM dd, yyyy - h:mm a')}
+                              {consultation.consultation_date ? format(new Date(consultation.consultation_date), 'MMMM dd, yyyy - h:mm a') : 'Invalid Date'}
                             </h4>
                             <p className="text-gray-600 text-sm">
                               Dr. {consultation.doctor.name} • {consultation.doctor.department}
@@ -635,7 +635,7 @@ const History: React.FC = () => {
                       <div className="flex justify-between items-start mb-3">
                         <div>
                           <h4 className="font-semibold text-gray-900">
-                            {format(new Date(consultation.consultation_date), 'MMM dd, yyyy')}
+                            {consultation.consultation_date ? format(new Date(consultation.consultation_date), 'MMM dd, yyyy') : 'Invalid Date'}
                           </h4>
                           <p className="text-gray-600 text-sm">
                             Dr. {consultation.doctor.name} • {consultation.doctor.department}

@@ -8,7 +8,7 @@ class ApiService {
   constructor() {
     this.api = axios.create({
       baseURL: API_BASE_URL,
-      timeout: 60000,
+      timeout: 300000, // 5 minutes for audio processing
       withCredentials: true,
       headers: {
         'Content-Type': 'application/json',
@@ -288,6 +288,15 @@ class ApiService {
     notes?: string;
   }) {
     const response = await this.api.post('/dashboard/appointment', data);
+    return response.data;
+  }
+
+  // Save notes and trigger clinical extraction
+  async saveNotesAndExtractClinical(consultationId: string, data: {
+    editedTranscript: string;
+    diarizationData: any;
+  }) {
+    const response = await this.api.post(`/consultation/${consultationId}/save-notes`, data);
     return response.data;
   }
 }

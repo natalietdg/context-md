@@ -7,6 +7,7 @@ import { AuditService } from '../shared/audit.service';
 import { SpeechProcessingService } from '../shared/speech-processing.service';
 import { PythonWorkerService } from '../shared/python-worker.service';
 import { ConsultationGateway } from './consultation.gateway';
+import { ReportService } from '../report/report.service';
 import { CreateConsultationDto, UpdateConsultationDto, LockConsultationDto } from './dto';
 
 @Injectable()
@@ -27,6 +28,7 @@ export class ConsultationService implements OnModuleInit {
     private speechProcessingService: SpeechProcessingService,
     private pythonWorkerService: PythonWorkerService,
     private consultationGateway: ConsultationGateway,
+    private reportService: ReportService,
   ) {}
 
   onModuleInit() {
@@ -40,7 +42,7 @@ export class ConsultationService implements OnModuleInit {
     createConsultationDto: CreateConsultationDto,
     audioBuffer: Buffer,
     requestInfo: { userId: string; ipAddress?: string; userAgent?: string; sessionId?: string }
-  ): Promise<Consultation> {
+  ): Promise<{ consultation: Consultation; transcriptionResult: any }> {
     console.log({createConsultationDto});
     const { patient_id, doctor_id, consent_id, consultation_date } = createConsultationDto;
 
@@ -108,10 +110,10 @@ export class ConsultationService implements OnModuleInit {
       );
 
       // Start async audio processing for transcription and translation
-      this.processConsultationAudioFromS3(finalConsultation.id);
+      const transcriptionResult = await this.processAudio(finalConsultation.id);
 
       this.logger.log(`Consultation created with audio: ${finalConsultation.id} for patient ${patient_id}`);
-      return finalConsultation;
+      return { consultation: finalConsultation, transcriptionResult };
     } catch (error) {
       this.logger.error('Failed to create consultation with audio:', error);
       throw new BadRequestException(`Failed to create consultation: ${error.message}`);
@@ -169,7 +171,7 @@ export class ConsultationService implements OnModuleInit {
       );
 
       // Start async audio processing for transcription and translation
-      this.processConsultationAudioFromS3(savedConsultation.id);
+      this.processAudio(savedConsultation.id);
 
       this.logger.log(`Consultation created: ${savedConsultation.id} for patient ${patient_id}`);
       return savedConsultation;
@@ -189,6 +191,9 @@ export class ConsultationService implements OnModuleInit {
     if (!consultation) {
       throw new NotFoundException('Consultation not found');
     }
+
+    // Return consultation as-is - processing updates happen via WebSocket callbacks
+    // The processAudio method handles all updates through the updateCallback
 
     return consultation;
   }
@@ -380,9 +385,11 @@ export class ConsultationService implements OnModuleInit {
     };
   }
 
-  private async processConsultationAudioFromS3(consultationId: string): Promise<void> {
+  private async processAudio(consultationId: string): Promise<any> {
+    this.logger.log(`Starting audio processing for consultation ${consultationId}`);
+
     try {
-      // Update status to processing and emit update
+      // Update status to processing
       await this.consultationRepository.update(consultationId, {
         processing_status: ProcessingStatus.PROCESSING,
       });
@@ -411,7 +418,7 @@ export class ConsultationService implements OnModuleInit {
         updateCallback,
         'auto'
       );
-
+      console.log({transcriptionResult});
       // Update consultation with transcripts
       this.consultationGateway.emitProcessingUpdate(consultationId, 'processing', 90, 'Saving transcription results...');
       await this.consultationRepository.update(consultationId, {
@@ -420,18 +427,118 @@ export class ConsultationService implements OnModuleInit {
         processing_status: ProcessingStatus.COMPLETED,
       });
 
-      // Emit completion
+      // Emit completion with transcription data
       const updatedConsultation = await this.getConsultation(consultationId);
-      this.consultationGateway.emitProcessingComplete(consultationId, updatedConsultation);
+      this.consultationGateway.emitProcessingComplete(consultationId, {
+        ...updatedConsultation,
+        transcriptionResult
+      });
       this.logger.log(`Audio processing completed for consultation ${consultationId}`);
+      return transcriptionResult;
     } catch (error) {
       this.logger.error(`Audio processing failed for consultation ${consultationId}:`, error);
       
-      // Update status to failed and emit error
+      // Update status to failed
       await this.consultationRepository.update(consultationId, {
         processing_status: ProcessingStatus.FAILED,
+      }).catch((updateError) => {
+        this.logger.error('Failed to update consultation status to failed:', updateError);
       });
+
       this.consultationGateway.emitProcessingError(consultationId, error.message);
+      throw error;
+    }
+  }
+
+  async getProcessingStatus(consultationId: string): Promise<any> {
+    const consultation = await this.getConsultation(consultationId);
+    return {
+      id: consultation.id,
+      processing_status: consultation.processing_status,
+      transcript_raw: consultation.transcript_raw,
+      transcript_eng: consultation.transcript_eng,
+      diarization_data: consultation.diarization_data ? JSON.parse(consultation.diarization_data) : null,
+      notes: consultation.notes,
+      created_at: consultation.created_at
+    };
+  }
+
+  async saveNotesAndExtractClinical(
+    consultationId: string,
+    saveNotesDto: any,
+    requestInfo?: { userId: string; ipAddress?: string; userAgent?: string; sessionId?: string }
+  ): Promise<any> {
+    this.logger.log(`Saving notes and extracting clinical info for consultation ${consultationId}`);
+
+    try {
+      const consultation = await this.getConsultation(consultationId);
+      
+      // Update consultation with edited diarization data and set edited English transcript
+      await this.consultationRepository.update(consultationId, {
+        diarization_data: JSON.stringify(saveNotesDto.diarizationData),
+        notes: saveNotesDto.editedTranscript,
+        transcript_eng: saveNotesDto.editedTranscript,
+        processing_status: ProcessingStatus.PROCESSING
+      });
+
+      this.consultationGateway.emitProcessingUpdate(consultationId, 'processing', 10, 'Starting clinical extraction...');
+
+      // Run clinical extraction on the edited transcript
+      const clinicalResult = await this.speechProcessingService.runClinicalExtractionOnly(
+        saveNotesDto.editedTranscript
+      );
+
+      this.consultationGateway.emitProcessingUpdate(consultationId, 'processing', 80, 'Generating medical report...');
+
+      // Detect if we should generate Chinese translation based on detected language
+      let detectedLanguage = 'unknown';
+      if (consultation?.diarization_data) {
+        try {
+          const diarizationData = typeof consultation.diarization_data === 'string' 
+            ? JSON.parse(consultation.diarization_data) 
+            : consultation.diarization_data;
+          detectedLanguage = diarizationData?.language_detected || 'unknown';
+        } catch (error) {
+          console.warn('Failed to parse diarization_data for language detection:', error);
+          detectedLanguage = 'unknown';
+        }
+      }
+      const shouldGenerateChinese = detectedLanguage.toLowerCase().includes('zh') || 
+                                   detectedLanguage.toLowerCase().includes('chinese') ||
+                                   detectedLanguage.toLowerCase().includes('mandarin');
+      
+      // Generate report (English + Chinese if detected)
+      const report = await this.reportService.generateReport(
+        { 
+          consultation_id: consultationId, 
+          target_language: shouldGenerateChinese ? 'zh' : 'en' 
+        },
+        requestInfo || { userId: 'system' }
+      );
+      
+      // Update status to completed
+      await this.consultationRepository.update(consultationId, {
+        processing_status: ProcessingStatus.COMPLETED
+      });
+
+      this.consultationGateway.emitProcessingUpdate(consultationId, 'completed', 100, 'Clinical extraction completed');
+      
+      return {
+        success: true,
+        clinicalResult,
+        report_id: report.id,
+        message: 'Notes saved, clinical extraction and report generation completed'
+      };
+
+    } catch (error) {
+      this.logger.error(`Save notes and clinical extraction failed for consultation ${consultationId}:`, error);
+      
+      await this.consultationRepository.update(consultationId, {
+        processing_status: ProcessingStatus.FAILED,
+      }).catch(() => {});
+
+      this.consultationGateway.emitProcessingError(consultationId, error.message);
+      throw error;
     }
   }
 }

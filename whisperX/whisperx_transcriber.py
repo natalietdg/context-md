@@ -200,14 +200,128 @@ class WhisperXTranscriber:
         else:
             print("\n⚠️ No HuggingFace token provided, skipping speaker diarization")
 
+        # Filter out hallucinated content before returning
+        result = self._filter_hallucinations(result)
+        
         # Update detection info
         result['language'] = detected_language
         result['detected_language'] = detected_language
 
         return result, os.path.basename(audio_file)
 
+    def _filter_hallucinations(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """Filter out hallucinated content from transcription results"""
+        if 'segments' not in result:
+            return result
+        
+        filtered_segments = []
+        seen_texts = set()
+        
+        for segment in result['segments']:
+            text = segment.get('text', '').strip()
+            
+            # Skip empty segments
+            if not text:
+                continue
+            
+            # Filter out repetitive content (same text appearing multiple times)
+            if text in seen_texts:
+                continue
+            
+            # Filter out obvious hallucinations
+            if self._is_hallucination(text):
+                continue
+            
+            # Filter out segments with very low confidence
+            if segment.get('avg_logprob', 0) < -1.5:
+                continue
+            
+            # Filter out segments that are too repetitive internally
+            if self._is_internally_repetitive(text):
+                continue
+            
+            seen_texts.add(text)
+            filtered_segments.append(segment)
+        
+        result['segments'] = filtered_segments
+        return result
+    
+    def _is_hallucination(self, text: str) -> bool:
+        """Detect if text is likely a hallucination"""
+        text_lower = text.lower().strip()
+        
+        # Empty or very short
+        if len(text_lower) < 3:
+            return True
+        
+        # Repetitive characters (like "totululululu...")
+        if len(set(text_lower)) < 3 and len(text_lower) > 10:
+            return True
+        
+        # Common hallucination patterns (only obvious nonsense, not real words)
+        hallucination_patterns = [
+            'totululululu',
+            'lalalalala', 
+            'nanananana',
+            'hahahaha',
+            'okokokokok',
+            'yesyesyesyes',
+            'nonononono',
+            'btw, totul'
+        ]
+        
+        for pattern in hallucination_patterns:
+            if pattern in text_lower:
+                return True
+        
+        # Very repetitive words
+        words = text_lower.split()
+        if len(words) > 3:
+            word_counts = {}
+            for word in words:
+                word_counts[word] = word_counts.get(word, 0) + 1
+            
+            # If any word appears more than 50% of the time, it's likely repetitive
+            max_count = max(word_counts.values())
+            if max_count > len(words) * 0.5:
+                return True
+        
+        return False
+    
+    def _is_internally_repetitive(self, text: str) -> bool:
+        """Check if text has internal repetition (same phrase repeated)"""
+        words = text.split()
+        if len(words) < 4:
+            return False
+        
+        # Check for repeated single words (like "I have a little" x20)
+        word_counts = {}
+        for word in words:
+            word_counts[word] = word_counts.get(word, 0) + 1
+        
+        # If any word appears more than 40% of the time, it's repetitive
+        max_count = max(word_counts.values()) if word_counts else 0
+        if max_count > len(words) * 0.4:
+            return True
+        
+        # Check for repeated phrases
+        for phrase_len in range(2, min(6, len(words) // 2)):
+            for i in range(len(words) - phrase_len * 2 + 1):
+                phrase1 = ' '.join(words[i:i + phrase_len])
+                phrase2 = ' '.join(words[i + phrase_len:i + phrase_len * 2])
+                
+                if phrase1 == phrase2:
+                    return True
+        
+        # Check for sentences that are mostly the same words repeated
+        unique_words = set(words)
+        if len(unique_words) < len(words) * 0.3:  # Less than 30% unique words
+            return True
+        
+        return False
+
     def extract_clean_format(self, result: Dict[str, Any]) -> Dict[str, Any]:
-        """Extract clean format from WhisperX results"""
+        """Extract clean format from WhisperX results with improved speaker continuity"""
         # Extract unique languages
         languages = set()
         
@@ -217,16 +331,22 @@ class WhisperXTranscriber:
         if 'detected_language' in result:
             languages.add(result['detected_language'])
         
-        # Process segments to create turns
-        turns = []
-        turn_id = 1
-        current_speaker = None
-        current_text_parts = []
+        # Process segments with improved speaker continuity
+        segments = result.get('segments', [])
+        if not segments:
+            return {
+                "turns": [],
+                "languages_detected": list(languages),
+                "total_segments": 0,
+                "processing_quality": "no_segments"
+            }
         
-        # Process segments
-        for segment in result.get('segments', []):
+        # First pass: assign speakers to segments with temporal smoothing
+        segment_speakers = []
+        for i, segment in enumerate(segments):
             segment_text = segment.get('text', '').strip()
             if not segment_text:
+                segment_speakers.append(None)
                 continue
             
             # Get speaker from words if available
@@ -245,34 +365,81 @@ class WhisperXTranscriber:
                     # Use the most frequent speaker in this segment
                     segment_speaker = max(speaker_counts.items(), key=lambda x: x[1])[0]
             
-            # If no speaker detected, use a default
+            # Apply temporal smoothing: if no speaker detected, use previous/next speaker
             if not segment_speaker:
-                segment_speaker = "SPEAKER_UNKNOWN"
+                # Look at previous segments for continuity
+                for j in range(max(0, i-3), i):
+                    if j < len(segment_speakers) and segment_speakers[j]:
+                        segment_speaker = segment_speakers[j]
+                        break
+                
+                # If still no speaker, use default
+                if not segment_speaker:
+                    segment_speaker = "SPEAKER_00"
             
-            # Check if this is a new turn (different speaker)
-            if segment_speaker != current_speaker:
-                # Save previous turn if exists
-                if current_speaker is not None and current_text_parts:
+            segment_speakers.append(segment_speaker)
+        
+        # Second pass: merge short segments and create turns with minimum duration
+        turns = []
+        turn_id = 1
+        current_speaker = None
+        current_text_parts = []
+        current_start_time = None
+        current_end_time = None
+        
+        for i, segment in enumerate(segments):
+            segment_text = segment.get('text', '').strip()
+            if not segment_text or segment_speakers[i] is None:
+                continue
+            
+            segment_speaker = segment_speakers[i]
+            segment_start = segment.get('start', 0)
+            segment_end = segment.get('end', 0)
+            
+            # Check if this should start a new turn
+            should_start_new_turn = (
+                segment_speaker != current_speaker or
+                (current_end_time and segment_start - current_end_time > 2.0)  # 2 second gap
+            )
+            
+            if should_start_new_turn:
+                # Save previous turn if exists and meets minimum duration (2 seconds)
+                if (current_speaker is not None and current_text_parts and 
+                    current_end_time and current_start_time and 
+                    (current_end_time - current_start_time) >= 1.0):  # Minimum 1 second
+                    
                     turns.append({
                         "turn_id": turn_id,
                         "speaker": current_speaker,
-                        "text": " ".join(current_text_parts).strip()
+                        "text": " ".join(current_text_parts).strip(),
+                        "start_time": current_start_time,
+                        "end_time": current_end_time,
+                        "duration": current_end_time - current_start_time
                     })
                     turn_id += 1
                 
                 # Start new turn
                 current_speaker = segment_speaker
                 current_text_parts = [segment_text]
+                current_start_time = segment_start
+                current_end_time = segment_end
             else:
                 # Same speaker, append to current turn
                 current_text_parts.append(segment_text)
+                current_end_time = segment_end
         
-        # Don't forget the last turn
-        if current_speaker is not None and current_text_parts:
+        # Don't forget the last turn (with minimum duration check)
+        if (current_speaker is not None and current_text_parts and 
+            current_end_time and current_start_time and 
+            (current_end_time - current_start_time) >= 1.0):  # Minimum 1 second
+            
             turns.append({
                 "turn_id": turn_id,
                 "speaker": current_speaker,
-                "text": " ".join(current_text_parts).strip()
+                "text": " ".join(current_text_parts).strip(),
+                "start_time": current_start_time,
+                "end_time": current_end_time,
+                "duration": current_end_time - current_start_time
             })
         
         # Convert to sorted list for consistent output

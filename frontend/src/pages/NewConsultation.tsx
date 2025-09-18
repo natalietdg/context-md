@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { LiveConsentKaraoke } from '../components/LiveConsentKaraoke';
 import { ProcessingStatus } from '../components/ProcessingStatus';
+import PatientSearchSelect from '../components/PatientSearchSelect';
 
 interface Patient {
   id: string;
@@ -253,9 +254,9 @@ const NewConsultation: React.FC = () => {
       if (consent?.id) formData.append('consent_id', consent.id);
 
       const newConsultation = await apiService.createConsultation(formData);
-      
+        console.log({newConsultation});
       // Navigate to the new consultation page
-      navigate(`/consultation/${newConsultation.id}`);
+      navigate(`/consultation/${newConsultation.consultation.id}`);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to create consultation');
       console.error('Create consultation error:', err);
@@ -289,68 +290,14 @@ const NewConsultation: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Patient Selection */}
-            <div className="space-y-2">
-              <Label htmlFor="patient-search">Select Patient</Label>
-              <div className="space-y-2">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="patient-search"
-                    placeholder="Search patients by name, NRIC, or email..."
-                    value={patientSearch}
-                    onChange={(e) => setPatientSearch(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                
-                {isLoadingPatients ? (
-                  <div className="p-4 text-center text-gray-500">Loading patients...</div>
-                ) : (
-                  <Select value={selectedPatient} onValueChange={setSelectedPatient}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose a patient" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {patients.length === 0 ? (
-                        <div className="p-2 text-gray-500 text-sm">No patients found</div>
-                      ) : (
-                        patients.map((patient) => (
-                          <SelectItem key={patient.id} value={patient.id}>
-                            <div className="flex flex-col">
-                              <span className="font-medium">{patient.name}</span>
-                              <span className="text-sm text-gray-500">
-                                {patient.nric} • {patient.email}
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-            </div>
-
-            {/* Selected Patient Info */}
-            {selectedPatientData && (
-              <Card className="bg-blue-50 border-blue-200">
-                <CardContent className="pt-4">
-                  <div className="flex items-center mb-2">
-                    <User className="h-4 w-4 text-blue-600 mr-2" />
-                    <span className="font-medium text-blue-900">Selected Patient</span>
-                  </div>
-                  <div className="text-sm text-blue-800">
-                    <p><strong>Name:</strong> {selectedPatientData.name}</p>
-                    <p><strong>NRIC:</strong> {selectedPatientData.nric}</p>
-                    <p><strong>Email:</strong> {selectedPatientData.email}</p>
-                    {selectedPatientData.phone && (
-                      <p><strong>Phone:</strong> {selectedPatientData.phone}</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+          <PatientSearchSelect
+            value={selectedPatient}
+            onChange={setSelectedPatient}
+            search={patientSearch}
+            onSearch={setPatientSearch}
+            isLoading={isLoadingPatients}
+            patients={patients}
+          />
 
             {/* Consultation Date/Time */}
             <div className="space-y-2">

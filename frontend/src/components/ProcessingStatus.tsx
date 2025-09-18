@@ -61,7 +61,9 @@ export const ProcessingStatus: React.FC<ProcessingStatusProps> = ({
           consultationId: data.consultationId,
           status: 'completed',
           progress: 100,
-          message: 'Processing completed successfully!',
+          message: data.result?.transcriptionResult ? 
+            `Processing completed! Transcript: ${data.result.transcriptionResult.raw_transcript?.substring(0, 100)}...` :
+            'Processing completed successfully!',
           timestamp: data.timestamp,
         });
         onComplete?.(data.result);

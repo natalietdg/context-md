@@ -81,9 +81,23 @@ export class ConsultationController {
 
   @Get(':id/status')
   async getProcessingStatus(@Param('id') id: string) {
-    return this.consultationService.getConsultationProcessingStatus(id);
+    return this.consultationService.getProcessingStatus(id);
   }
 
+  @Post(':id/save-notes')
+  async saveNotesAndExtractClinical(
+    @Param('id') id: string,
+    @Body() saveNotesDto: any,
+    @Request() req,
+  ) {
+    const requestInfo = {
+      userId: req.user.id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      sessionId: req.sessionID,
+    };
+    return this.consultationService.saveNotesAndExtractClinical(id, saveNotesDto, requestInfo);
+  }
 
   @Get('patient/:patientId')
   async getPatientConsultations(@Param('patientId') patientId: string) {

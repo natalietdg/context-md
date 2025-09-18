@@ -27,6 +27,7 @@ import { format } from 'date-fns';
 import { LiveConsentKaraoke } from '../components/LiveConsentKaraoke';
 import { ReviewVerification } from '../components/ReviewVerification';
 import { ProcessingStatus } from '../components/ProcessingStatus';
+import { DiarizationEditor } from '../components/DiarizationEditor';
 
 interface Consultation {
   id: string;
@@ -34,6 +35,7 @@ interface Consultation {
   aws_audio_link?: string;
   transcript_raw?: string;
   transcript_eng?: string;
+  diarization_data?: string;
   file_size?: number;
   processing_status: string;
   is_locked: boolean;
@@ -93,6 +95,43 @@ const Consultation: React.FC = () => {
   useEffect(() => {
     if (id) {
       loadConsultation();
+      
+      // Set up WebSocket for real-time processing updates
+      const ws = new WebSocket(`ws://localhost:4000`);
+      
+      ws.onopen = () => {
+        console.log('WebSocket connected for consultation:', id);
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event?.data);
+          console.log({eventData: event.data});
+          if (data.consultationId === id || data.jobId === id) {
+            console.log('Processing update:', data);
+            
+            // Reload consultation data when processing completes
+            if (data.stage === 'completed' || data.status === 'completed') {
+              loadConsultation();
+            }
+          }
+        } catch (error) {
+          console.error('WebSocket message parsing error:', error);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+      
+      ws.onclose = () => {
+        console.log('WebSocket disconnected');
+      };
+      
+      // Cleanup WebSocket on unmount
+      return () => {
+        ws.close();
+      };
     }
   }, [id]);
 
@@ -114,7 +153,7 @@ const Consultation: React.FC = () => {
 
   useEffect(() => {
     if (consultation) {
-      setNotes(consultation.notes || '');
+      setNotes(consultation?.notes || '');
     }
   }, [consultation]);
 
@@ -122,6 +161,7 @@ const Consultation: React.FC = () => {
     try {
       setIsLoading(true);
       const data = await apiService.getConsultation(id!);
+      console.log({data});
       setConsultation(data);
     } catch (err: any) {
       setError('Failed to load consultation');
@@ -184,7 +224,7 @@ const Consultation: React.FC = () => {
       formData.append('audio', audioBlob, 'consultation-audio.wav');
 
       await apiService.uploadConsultationAudio(
-        consultation.id,
+        consultation?.id,
         formData,
         (percent) => setUploadProgress(percent)
       );
@@ -192,6 +232,11 @@ const Consultation: React.FC = () => {
       // Reload consultation data
       await loadConsultation();
       setAudioBlob(null);
+      
+      // Auto-navigate to report page after successful audio processing
+      setTimeout(() => {
+        navigate(`/report/consultation/${consultation?.id}`);
+      }, 1000); // Small delay to ensure data is loaded
       
     } catch (err: any) {
       setError('Failed to upload audio');
@@ -207,7 +252,7 @@ const Consultation: React.FC = () => {
 
     try {
       setIsUpdatingNotes(true);
-      await apiService.updateConsultation(consultation.id, { notes });
+      await apiService.updateConsultation(consultation?.id, { notes });
       await loadConsultation();
     } catch (err) {
       setError('Failed to update notes');
@@ -222,8 +267,8 @@ const Consultation: React.FC = () => {
 
     try {
       await apiService.lockConsultation({
-        consultation_id: consultation.id,
-        lock: !consultation.is_locked
+        consultation_id: consultation?.id,
+        lock: !consultation?.is_locked
       });
       await loadConsultation();
     } catch (err) {
@@ -236,13 +281,24 @@ const Consultation: React.FC = () => {
     if (!consultation) return;
 
     try {
-      await apiService.generateReport({
-        consultation_id: consultation.id,
-        target_language: 'en'
+      // Save notes first if they've been modified
+      if (notes !== consultation?.notes) {
+        await apiService.updateConsultation(consultation?.id, { notes });
+      }
+      
+      // Generate report using the clinical extraction endpoint
+      await apiService.saveNotesAndExtractClinical(consultation?.id, {
+        editedTranscript: consultation?.transcript_eng || consultation?.transcript_raw || '',
+        diarizationData: consultation?.diarization_data ? (typeof consultation.diarization_data === 'string' ? JSON.parse(consultation.diarization_data) : consultation.diarization_data) : { segments: [], speakers: [] }
       });
-      navigate(`/report/consultation/${consultation.id}`);
-    } catch (err) {
-      setError('Failed to generate report');
+      
+      // Reload consultation to get updated data
+      await loadConsultation();
+      
+      // Navigate to report view after generation
+      navigate(`/report/consultation/${consultation?.id}`);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to generate report');
       console.error('Report generation error:', err);
     }
   };
@@ -262,7 +318,7 @@ const Consultation: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading consultation...</p>
+          <p className="mt-4 text-gray-600">Loading consultation?...</p>
         </div>
       </div>
     );
@@ -292,7 +348,7 @@ const Consultation: React.FC = () => {
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Consultation</h1>
               <p className="text-gray-600">
-                {consultation && format(new Date(consultation.consultation_date), 'MMMM dd, yyyy - h:mm a')}
+                {consultation && format(new Date(consultation?.consultation_date), 'MMMM dd, yyyy - h:mm a')}
               </p>
             </div>
             <div className="flex items-center space-x-4">
@@ -347,13 +403,13 @@ const Consultation: React.FC = () => {
                   {consultation?.patient?.phone && (
                     <div>
                       <label className="text-sm font-medium text-gray-600">Phone</label>
-                      <p className="text-gray-900">{consultation.patient?.phone}</p>
+                      <p className="text-gray-900">{consultation?.patient?.phone}</p>
                     </div>
                   )}
                   {consultation?.patient?.allergies && (
                     <div>
                       <label className="text-sm font-medium text-gray-600">Allergies</label>
-                      <p className="text-red-700 font-medium">{consultation.patient?.allergies}</p>
+                      <p className="text-red-700 font-medium">{consultation?.patient?.allergies}</p>
                     </div>
                   )}
                 </div>
@@ -376,10 +432,10 @@ const Consultation: React.FC = () => {
                         <CheckCircle className="h-5 w-5 text-green-600" />
                         <span className="text-green-800">Consent recorded</span>
                         <Badge variant="outline" className="text-green-700 border-green-300">
-                          {consultation.consent?.status}
+                          {consultation?.consent?.status}
                         </Badge>
                       </div>
-                      {consultation.consent?.aws_audio_link && (
+                      {consultation?.consent?.aws_audio_link && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -392,7 +448,7 @@ const Consultation: React.FC = () => {
                               }
                               
                               const res = await apiService.replayConsent({
-                                consent_id: consultation.consent?.id || '',
+                                consent_id: consultation?.consent?.id || '',
                                 role: 'doctor',
                                 purpose: 'consultation_review'
                               });
@@ -420,16 +476,16 @@ const Consultation: React.FC = () => {
                       )}
                     </div>
                     
-                    {consultation.consent?.consent_text && (
+                    {consultation?.consent?.consent_text && (
                       <div className="bg-gray-50 border rounded-lg p-3">
-                        <p className="text-sm text-gray-700">{consultation.consent?.consent_text}</p>
+                        <p className="text-sm text-gray-700">{consultation?.consent?.consent_text}</p>
                       </div>
                     )}
                     
                     <div className="text-xs text-gray-500">
-                      Recorded: {format(new Date(consultation.consent?.created_at || consultation.consultation_date), 'MMM dd, yyyy - h:mm a')}
-                      {consultation.consent?.duration_seconds && (
-                        <span className="ml-2">• Duration: {Math.floor(consultation.consent?.duration_seconds / 60)}:{(consultation.consent?.duration_seconds % 60).toString().padStart(2, '0')}</span>
+                      Recorded: {format(new Date(consultation?.consent?.created_at || consultation?.consultation_date), 'MMM dd, yyyy - h:mm a')}
+                      {consultation?.consent?.duration_seconds && (
+                        <span className="ml-2">• Duration: {Math.floor(consultation?.consent?.duration_seconds / 60)}:{(consultation?.consent?.duration_seconds % 60).toString().padStart(2, '0')}</span>
                       )}
                     </div>
                   </div>
@@ -464,8 +520,8 @@ const Consultation: React.FC = () => {
                         }}
                         className="mt-4"
                       />
-                      </div>
                     </div>
+                  </div>
                   )}
                   
                   {/* Inline Audio Player */}
@@ -597,9 +653,9 @@ const Consultation: React.FC = () => {
                       <CheckCircle className="h-5 w-5 text-green-600" />
                       <span className="text-green-800">Audio uploaded successfully</span>
                     </div>
-                    {typeof consultation.file_size === 'number' && (
+                    {typeof consultation?.file_size === 'number' && (
                       <p className="text-xs text-green-700 mt-2">
-                        File size: {Math.round((consultation.file_size / (1024 * 1024)) * 100) / 100} MB
+                        File size: {Math.round((consultation?.file_size / (1024 * 1024)) * 100) / 100} MB
                       </p>
                     )}
                   </div>
@@ -607,73 +663,100 @@ const Consultation: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* Transcripts */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Transcripts</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Raw Transcript Section */}
-                <div>
-                  <label className="text-sm font-medium text-gray-600 mb-2 block flex items-center">
-                    Raw Transcript
-                    {!consultation?.transcript_raw && consultation?.processing_status === 'processing' && (
-                      <Loader2 className="h-4 w-4 ml-2 animate-spin text-blue-500" />
-                    )}
-                  </label>
-                  {consultation?.transcript_raw ? (
-                    <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
-                      <p className="text-gray-900 whitespace-pre-wrap">
-                        {consultation.transcript_raw}
-                      </p>
-                    </div>
-                  ) : consultation?.processing_status === 'processing' ? (
-                    <div className="bg-gray-50 rounded-lg p-4 flex items-center justify-center min-h-24">
-                      <div className="text-center">
-                        <Loader2 className="h-6 w-6 animate-spin text-blue-500 mx-auto mb-2" />
-                        <p className="text-gray-600 text-sm">Transcribing audio...</p>
-                      </div>
-                    </div>
+            {/* Transcripts & Diarization */}
+            {consultation?.processing_status !== 'pending' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Transcripts & Diarization</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {consultation?.processing_status === 'completed' && consultation?.diarization_data ? (
+                    <DiarizationEditor
+                      rawTranscript={consultation?.transcript_raw || ''}
+                      englishTranscript={consultation?.transcript_eng || consultation?.transcript_raw || ''}
+                      diarizationData={typeof consultation?.diarization_data === 'string' ? JSON.parse(consultation.diarization_data) : consultation?.diarization_data}
+                      onSaveNotes={async (selectedSegments, editedTranscript) => {
+                        try {
+                          await apiService.saveNotesAndExtractClinical(consultation?.id, {
+                            editedTranscript,
+                            diarizationData: {
+                              segments: selectedSegments,
+                              speakers: Array.from(new Set(selectedSegments.map(s => s.speaker)))
+                            }
+                          });
+                          // Navigate to report view after generation
+                          navigate(`/report/consultation/${consultation?.id}`);
+                        } catch (e) {
+                          setError('Failed to generate report');
+                        }
+                      }}
+                    />
                   ) : (
-                    <div className="bg-gray-50 rounded-lg p-4 flex items-center justify-center min-h-24">
-                      <p className="text-gray-500 text-sm">Transcription not available</p>
-                    </div>
-                  )}
-                </div>
-                
-                {/* English Translation Section */}
-                <div>
-                  <label className="text-sm font-medium text-gray-600 mb-2 block flex items-center">
-                    English Translation
-                    {!consultation?.transcript_eng && consultation?.transcript_raw && consultation?.processing_status === 'processing' && (
-                      <Loader2 className="h-4 w-4 ml-2 animate-spin text-green-500" />
-                    )}
-                  </label>
-                  {consultation?.transcript_eng ? (
-                    <div className="bg-blue-50 rounded-lg p-4 max-h-64 overflow-y-auto">
-                      <p className="text-gray-900 whitespace-pre-wrap">
-                        {consultation.transcript_eng}
-                      </p>
-                    </div>
-                  ) : consultation?.transcript_raw && consultation?.processing_status === 'processing' ? (
-                    <div className="bg-blue-50 rounded-lg p-4 flex items-center justify-center min-h-24">
-                      <div className="text-center">
-                        <Loader2 className="h-6 w-6 animate-spin text-green-500 mx-auto mb-2" />
-                        <p className="text-gray-600 text-sm">Translating to English...</p>
+                    <>
+                      {/* Raw Transcript Section */}
+                      <div>
+                        <label className="text-sm font-medium text-gray-600 mb-2 block flex items-center">
+                          Raw Transcript
+                          {consultation?.processing_status === 'processing' && !consultation?.transcript_raw && (
+                            <Loader2 className="h-4 w-4 ml-2 animate-spin text-blue-500" />
+                          )}
+                        </label>
+                        {consultation?.transcript_raw ? (
+                          <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
+                            <p className="text-gray-900 whitespace-pre-wrap">
+                              {consultation?.transcript_raw}
+                            </p>
+                          </div>
+                        ) : consultation?.processing_status === 'processing' ? (
+                          <div className="bg-gray-50 rounded-lg p-4 flex items-center justify-center min-h-24">
+                            <div className="text-center">
+                              <Loader2 className="h-6 w-6 animate-spin text-blue-500 mx-auto mb-2" />
+                              <p className="text-gray-600 text-sm">Transcribing audio...</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-gray-50 rounded-lg p-4 flex items-center justify-center min-h-24">
+                            <p className="text-gray-500 text-sm">Transcription not available</p>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ) : consultation?.transcript_raw ? (
-                    <div className="bg-blue-50 rounded-lg p-4 flex items-center justify-center min-h-24">
-                      <p className="text-gray-500 text-sm">Translation pending</p>
-                    </div>
-                  ) : (
-                    <div className="bg-blue-50 rounded-lg p-4 flex items-center justify-center min-h-24">
-                      <p className="text-gray-500 text-sm">Awaiting transcription</p>
-                    </div>
+                      
+                      {/* English Translation Section */}
+                      <div>
+                        <label className="text-sm font-medium text-gray-600 mb-2 block flex items-center">
+                          English Translation
+                          {!consultation?.transcript_eng && consultation?.transcript_raw && consultation?.processing_status === 'processing' && (
+                            <Loader2 className="h-4 w-4 ml-2 animate-spin text-green-500" />
+                          )}
+                        </label>
+                        {consultation?.transcript_eng ? (
+                          <div className="bg-blue-50 rounded-lg p-4 max-h-64 overflow-y-auto">
+                            <p className="text-gray-900 whitespace-pre-wrap">
+                              {consultation?.transcript_eng}
+                            </p>
+                          </div>
+                        ) : consultation?.transcript_raw && consultation?.processing_status === 'processing' ? (
+                          <div className="bg-blue-50 rounded-lg p-4 flex items-center justify-center min-h-24">
+                            <div className="text-center">
+                              <Loader2 className="h-6 w-6 animate-spin text-green-500 mx-auto mb-2" />
+                              <p className="text-gray-600 text-sm">Translating to English...</p>
+                            </div>
+                          </div>
+                        ) : consultation?.transcript_raw ? (
+                          <div className="bg-blue-50 rounded-lg p-4 flex items-center justify-center min-h-24">
+                            <p className="text-gray-500 text-sm">Translation pending</p>
+                          </div>
+                        ) : (
+                          <div className="bg-blue-50 rounded-lg p-4 flex items-center justify-center min-h-24">
+                            <p className="text-gray-500 text-sm">Awaiting transcription</p>
+                          </div>
+                        )}
+                      </div>
+                    </>
                   )}
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Notes */}
             <Card>
@@ -688,6 +771,7 @@ const Consultation: React.FC = () => {
                   className="min-h-32"
                   disabled={consultation?.is_locked}
                 />
+                <div className='flex flex-row gap-2'>
                 {!consultation?.is_locked && (
                   <div className="flex justify-end mt-4">
                     <Button 
@@ -698,6 +782,16 @@ const Consultation: React.FC = () => {
                     </Button>
                   </div>
                 )}
+                <div className="flex justify-end mt-4">
+                 <Button
+                  onClick={generateReport}
+                  className="w-full bg-green-500"
+                  disabled={consultation?.processing_status !== 'completed'}
+                >
+                  Generate Report
+                </Button>
+              </div>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -728,21 +822,13 @@ const Consultation: React.FC = () => {
                   )}
                 </Button>
 
-                <Button
-                  onClick={generateReport}
-                  className="w-full"
-                  disabled={consultation?.processing_status !== 'completed'}
-                >
-                  Generate Report
-                </Button>
-
-                {consultation?.reports && consultation.reports.length > 0 && (
+                {consultation?.reports && consultation?.reports.length > 0 && (
                   <Button
                     variant="outline"
                     className="w-full"
-                    onClick={() => navigate(`/report/consultation/${consultation.id}`)}
+                    onClick={() => navigate(`/report/consultation/${consultation?.id}`)}
                   >
-                    View Reports ({consultation.reports.length})
+                    View Reports ({consultation?.reports.length})
                   </Button>
                 )}
               </CardContent>

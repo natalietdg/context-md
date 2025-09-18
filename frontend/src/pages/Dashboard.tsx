@@ -345,7 +345,10 @@ const Dashboard: React.FC = () => {
                             View Details
                           </Button>
                           {consultation.reports.length === 0 && consultation.processing_status === 'completed' && (
-                            <Button size="sm">
+                            <Button 
+                              size="sm"
+                              onClick={() => navigate(`/consultation/${consultation.id}`)}
+                            >
                               Generate Report
                             </Button>
                           )}

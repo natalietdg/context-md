@@ -300,19 +300,38 @@ IMPORTANT: Return ONLY the JSON object, no other text. Do not repeat or explain.
                         generated_text = response[0]['generated_text'].strip()
                         print(f"✅ LLM generated response (length: {len(generated_text)})")
                         
-                        # Parse JSON response
+                        # Parse JSON response with multiple fallback strategies
                         try:
                             # Clean the response - remove any markdown formatting
                             clean_text = generated_text.replace('```json', '').replace('```', '').strip()
                             
-                            # Parse JSON
-                            clinical_data = json.loads(clean_text)
-                            print(f"✅ Successfully parsed JSON with keys: {list(clinical_data.keys())}")
-                            return clinical_data
+                            # Remove any text before the first { and after the last }
+                            start_idx = clean_text.find('{')
+                            end_idx = clean_text.rfind('}') + 1
                             
+                            if start_idx >= 0 and end_idx > start_idx:
+                                json_text = clean_text[start_idx:end_idx]
+                                print(f"🔍 Extracted JSON: {json_text[:200]}...")
+                                
+                                # Parse JSON
+                                clinical_data = json.loads(json_text)
+                                print(f"✅ Successfully parsed JSON with keys: {list(clinical_data.keys())}")
+                                return clinical_data
+                            else:
+                                print(f"❌ No valid JSON structure found in response")
+                                
                         except json.JSONDecodeError as e:
                             print(f"❌ JSON parsing failed: {e}")
-                            # Continue to next attempt
+                            print(f"🔍 Raw response: {generated_text}")
+                            
+                            # Try to create a basic structure from the text
+                            try:
+                                fallback_data = self._extract_fallback_json(generated_text)
+                                if fallback_data:
+                                    print(f"✅ Created fallback JSON structure")
+                                    return fallback_data
+                            except Exception as fallback_error:
+                                print(f"❌ Fallback extraction also failed: {fallback_error}")
                     else:
                         print("❌ LLM returned empty response")
                         

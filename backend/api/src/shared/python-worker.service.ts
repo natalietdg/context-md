@@ -300,7 +300,7 @@ export class PythonWorkerService extends EventEmitter implements OnModuleInit, O
     return this.ready && this.proc !== null && !this.proc.killed;
   }
 
-  public async submitJob(audioPath: string): Promise<string> {
+  public async submitJob(audioPath: string, options?: { skipTranslation?: boolean; skipClinical?: boolean }): Promise<string> {
     if (!this.isReady()) {
       throw new Error('Python worker not ready');
     }
@@ -318,7 +318,10 @@ export class PythonWorkerService extends EventEmitter implements OnModuleInit, O
     this.sendCommand({
       cmd: 'run',
       job_id: jobId,
-      audio_path: audioPath
+      audio_path: audioPath,
+      // Respect flags: default to skipping clinical extraction for initial pass
+      skip_translation: options?.skipTranslation ?? false,
+      skip_clinical: options?.skipClinical ?? true,
     });
 
     this.logger.log(`Submitted job ${jobId} for audio: ${audioPath}`);

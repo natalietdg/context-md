@@ -42,6 +42,10 @@ export class ConsultationGateway implements OnGatewayConnection, OnGatewayDiscon
   emitProcessingComplete(consultationId: string, result: any) {
     this.server.emit('processing_complete', {
       consultationId,
+      status: 'completed',
+      stage: 'completed',
+      progress: 100,
+      message: 'Processing completed',
       result,
       timestamp: new Date().toISOString(),
     });

@@ -9,9 +9,9 @@
     "dev:watch": "nodemon --config nodemon.json",
     "_no-frontend": "echo '[warn] frontend/ is empty or missing a dev script; skipping frontend dev server.'",
     "db:start": "supabase start",
-    "db:stop": "supabase stop", 
+    "db:stop": "supabase stop",
     "prestart": "npm --prefix backend/api install && npm --prefix backend/api run build",
-    "start": "npm run start:prod --prefix backend/api", 
+    "start": "npm run start:prod --prefix backend/api",
     "start:prod": "node backend/api/dist/main.js",
     "build": "npm run build --prefix backend/api && npm run build --prefix frontend",
     "test": "npm run test --prefix backend/api"
@@ -19,5 +19,8 @@
   "devDependencies": {
     "concurrently": "^8.2.2",
     "nodemon": "^3.1.0"
+  },
+  "dependencies": {
+    "@radix-ui/react-checkbox": "^1.3.3"
   }
 }

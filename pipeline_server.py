@@ -23,6 +23,7 @@ from threading import Event
 from typing import Dict, Any, Optional
 from pathlib import Path
 import os
+from contextlib import redirect_stdout
 
 # Disable colored output to prevent ANSI escape sequences
 os.environ['NO_COLOR'] = '1'
@@ -110,7 +111,7 @@ def load_models():
     log("Model loading completed")
     return loaded_models
 
-def run_pipeline(models: Dict[str, Any], audio_input: str, job_id: str) -> Dict[str, Any]:
+def run_pipeline(models: Dict[str, Any], audio_input: str, job_id: str, skip_translation: bool = False, skip_clinical: bool = True) -> Dict[str, Any]:
     """Run the complete audio processing pipeline"""
     log(f"Processing job {job_id}: {audio_input}")
 
@@ -150,7 +151,7 @@ def run_pipeline(models: Dict[str, Any], audio_input: str, job_id: str) -> Dict[
                 raw_transcript, lean_transcript = transcriber.transcribe_audio(
                     audio_path=audio_path,
                     language="auto",
-                    model_size=os.getenv('WHISPER_MODEL_SIZE', "base"),
+                    model_size=os.getenv('WHISPER_MODEL_SIZE', "small"),
                     min_speakers=None,
                     max_speakers=None
                 )
@@ -174,7 +175,7 @@ def run_pipeline(models: Dict[str, Any], audio_input: str, job_id: str) -> Dict[
                     audio_file=audio_path,
                     language="auto",
                     hf_token=os.getenv('HF_TOKEN'),
-                    model_size=os.getenv('WHISPER_MODEL_SIZE', "base"),
+                    model_size=os.getenv('WHISPER_MODEL_SIZE', "small"),
                     min_speakers=None,
                     max_speakers=None
                 )
@@ -215,47 +216,65 @@ def run_pipeline(models: Dict[str, Any], audio_input: str, job_id: str) -> Dict[
 
         log(f"Transcription completed: {lean_transcript}")
 
-        # Step 3: Translate (optional)
+        # Step 3: Translate (optional and skippable)
         translated_transcript = lean_transcript
-        if models.get('translator'):
+        if not skip_translation and models.get('translator'):
             try:
                 log("Starting translation...")
-                # translator interface may accept either path or content; try both
-                try:
-                    translated_transcript = models['translator'].translate_transcript(lean_transcript)
-                except Exception:
-                    translated_transcript = models['translator'].translate(lean_transcript)
+                with redirect_stdout(sys.stderr):
+                    # If we have a path on disk, use transcript file translation
+                    if isinstance(lean_transcript, str) and Path(lean_transcript).exists():
+                        translated_transcript = models['translator'].translate_transcript(lean_transcript)
+                    else:
+                        # If it's JSON-like, use JSON translators; else fallback to text
+                        try:
+                            parsed = json.loads(lean_transcript) if isinstance(lean_transcript, str) else lean_transcript
+                        except Exception:
+                            parsed = None
+                        if isinstance(parsed, dict):
+                            translated_transcript = models['translator'].translate_json(parsed)
+                        elif isinstance(lean_transcript, str):
+                            translated_transcript = models['translator'].translate_text(lean_transcript)
+                        else:
+                            translated_transcript = lean_transcript
                 log(f"Translation completed: {translated_transcript}")
             except Exception as e:
                 log(f"Translation failed, using original: {e}")
+        else:
+            if skip_translation:
+                log("Skipping translation step (skip_translation=True)")
 
-        # Step 4: Clinical extraction (optional)
+        # Step 4: Clinical extraction (optional and skippable)
         clinical_result = None
-        if models.get('clinical'):
+        if not skip_clinical and models.get('clinical'):
             try:
                 log("Starting clinical extraction...")
-                # If translator returned a path string, try to open; otherwise pass object
-                transcript_data = None
-                if isinstance(translated_transcript, str) and Path(translated_transcript).exists():
-                    with open(translated_transcript, 'r', encoding='utf-8') as f:
-                        transcript_data = json.load(f)
-                else:
-                    # assume translated_transcript is JSON-like string or dict
-                    try:
-                        transcript_data = json.loads(translated_transcript)
-                    except Exception:
-                        transcript_data = translated_transcript
+                with redirect_stdout(sys.stderr):
+                    # If translator returned a path string, try to open; otherwise pass object
+                    transcript_data = None
+                    if isinstance(translated_transcript, str) and Path(translated_transcript).exists():
+                        with open(translated_transcript, 'r', encoding='utf-8') as f:
+                            transcript_data = json.load(f)
+                    else:
+                        # assume translated_transcript is JSON-like string or dict
+                        try:
+                            transcript_data = json.loads(translated_transcript)
+                        except Exception:
+                            transcript_data = translated_transcript
 
-                clinical_result = models['clinical'].extract_clinical_info(transcript_data)
-                # Save clinical result
-                input_filename = Path(translated_transcript if isinstance(translated_transcript, str) else "transcript").stem.replace('_translated', '')
-                clinical_filename = f"{input_filename}_clinical_{int(time.time())}.json"
-                clinical_path = clinical_dir / clinical_filename
-                with open(clinical_path, 'w', encoding='utf-8') as f:
-                    json.dump(clinical_result, f, indent=2, ensure_ascii=False)
+                    clinical_result = models['clinical'].extract_clinical_info(transcript_data)
+                    # Save clinical result
+                    input_filename = Path(translated_transcript if isinstance(translated_transcript, str) else "transcript").stem.replace('_translated', '')
+                    clinical_filename = f"{input_filename}_clinical_{int(time.time())}.json"
+                    clinical_path = clinical_dir / clinical_filename
+                    with open(clinical_path, 'w', encoding='utf-8') as f:
+                        json.dump(clinical_result, f, indent=2, ensure_ascii=False)
                 log(f"Clinical extraction completed: {clinical_path}")
             except Exception as e:
                 log(f"Clinical extraction failed: {e}")
+        else:
+            if skip_clinical:
+                log("Skipping clinical extraction step (skip_clinical=True)")
 
         # Return results
         result = {
@@ -347,27 +366,27 @@ def warmup_models(models: Dict[str, Any]):
             except Exception as e:
                 log(f"WhisperX warmup failed (non-critical): {e}")
 
-        # Warmup clinical extractor
+        # Warmup clinical extractor (skip heavy inference to avoid noise/logs)
         if models.get('clinical'):
-            log("Warming up clinical extractor...")
+            log("Warming up clinical extractor (skipping heavy inference)...")
             try:
-                dummy_text = "Patient presents with mild symptoms."
                 ce = models['clinical']
-                if hasattr(ce, 'extract_clinical_info'):
-                    ce.extract_clinical_info(dummy_text)
-                log("Clinical extractor warmup attempted")
+                # Optionally touch a lightweight method if available
+                if hasattr(ce, 'create_extraction_prompt'):
+                    with redirect_stdout(sys.stderr):
+                        ce.create_extraction_prompt("Warmup prompt: patient complains of cough.")
+                log("Clinical extractor warmup completed (no inference)")
             except Exception as e:
-                log(f"Clinical extractor warmup failed (non-critical): {e}")
+                log(f"Clinical extractor warmup skipped/failed (non-critical): {e}")
 
-        # Warmup translator
+        # Warmup translator (use safe text translation, redirect prints to stderr)
         if models.get('translator'):
             log("Warming up translator...")
             try:
                 tr = models['translator']
-                if hasattr(tr, 'translate'):
-                    tr.translate("Hello world", source_lang='en', target_lang='zh')
-                elif hasattr(tr, 'translate_transcript'):
-                    tr.translate_transcript("Hello world")
+                if hasattr(tr, 'translate_text'):
+                    with redirect_stdout(sys.stderr):
+                        tr.translate_text("Hello world")
                 log("Translator warmup attempted")
             except Exception as e:
                 log(f"Translator warmup failed (non-critical): {e}")
@@ -399,7 +418,10 @@ def process_command(models: Dict[str, Any], line: str):
             if not audio_input:
                 send_response({"job_id": job_id, "status": "failed", "error": "Missing audio_path or audio_s3_path"})
                 return
-            result = run_pipeline(models, audio_input, job_id)
+            # Respect optional skip flags (default: skip clinical)
+            skip_translation = bool(req.get("skip_translation", False))
+            skip_clinical = bool(req.get("skip_clinical", True))
+            result = run_pipeline(models, audio_input, job_id, skip_translation=skip_translation, skip_clinical=skip_clinical)
             if result.get("success"):
                 send_response({"job_id": job_id, "status": "done", "result": result})
             else:
