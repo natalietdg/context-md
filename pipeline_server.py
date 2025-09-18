@@ -294,6 +294,23 @@ def background_load_and_warmup():
             log(f"Warmup failed: {e}")
         models_ready_event.set()
         log("Background model load completed")
+        
+        # Send health status after models are loaded
+        try:
+            send_response({
+                "status": "ok",
+                "ready": models_ready_event.is_set(),
+                "models_loaded": {
+                    "whisperx": models.get('whisperx') is not None,
+                    "translator": models.get('translator') is not None,
+                    "clinical": models.get('clinical') is not None,
+                    "s3": models.get('s3') is not None
+                },
+                "models_initialization_done": models_ready_event.is_set(),
+                "model_errors": list(models_loading_errors)
+            })
+        except Exception as e:
+            log(f"Failed to send health status: {e}")
     except Exception as e:
         with models_lock:
             models_loading_errors.append(str(e))

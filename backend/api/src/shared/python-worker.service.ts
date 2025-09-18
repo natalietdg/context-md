@@ -175,6 +175,14 @@ export class PythonWorkerService extends EventEmitter implements OnModuleInit, O
       try {
         // Strip ANSI color codes before parsing JSON
         const cleanLine = this.stripAnsiCodes(line);
+        
+        // Skip lines that don't look like JSON (don't start with { or [)
+        if (!cleanLine.startsWith('{') && !cleanLine.startsWith('[')) {
+          // This is a log message, not JSON - log it as stderr
+          this.logger.log(`Python worker stderr: ${cleanLine}`);
+          continue;
+        }
+        
         const message = JSON.parse(cleanLine);
         
         if (message.job_id) {
@@ -251,7 +259,11 @@ export class PythonWorkerService extends EventEmitter implements OnModuleInit, O
           }
         }
       } catch (error) {
-        this.logger.warn('Failed to parse Python worker message:', line);
+        // Only warn if it looked like JSON but failed to parse
+        if (line.trim().startsWith('{') || line.trim().startsWith('[')) {
+          this.logger.warn('Failed to parse Python worker JSON:', line);
+        }
+        // Otherwise it's just a log message, ignore silently
       }
     }
   }
