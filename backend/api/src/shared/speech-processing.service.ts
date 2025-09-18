@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { execFile } from 'child_process';
+import { PythonWorkerService } from './python-worker.service';
 
 export interface TranscriptionResult {
   raw_transcript: string;
@@ -19,43 +20,83 @@ export interface TranscriptionResult {
 export class SpeechProcessingService {
   private readonly logger = new Logger(SpeechProcessingService.name);
 
-  constructor(private httpService: HttpService) {}
+  constructor(
+    private httpService: HttpService,
+    private pythonWorker: PythonWorkerService
+  ) {}
 
   async processAudio(audioBuffer: Buffer, language: string = 'auto'): Promise<TranscriptionResult> {
     const startTime = Date.now();
 
     try {
-      // Step 1: Transcribe audio to raw (code-switched) text using MERaLiON/Whisper
-      const rawTranscript = await this.transcribeAudio(audioBuffer, language);
-
-      // Step 2: Translate raw transcript to English if needed (or reuse CLI translation)
-      let englishTranscript: { text: string; confidence: number };
-      if (rawTranscript.english) {
-        englishTranscript = {
-          text: rawTranscript.english,
-          confidence: rawTranscript.english_confidence ?? rawTranscript.confidence ?? 0.8,
-        };
+      // Use persistent Python worker for fast processing
+      if (this.pythonWorker.isReady()) {
+        this.logger.log('Using persistent Python worker for transcription');
+        return await this.processWithWorker(audioBuffer, language, startTime);
       } else {
-        englishTranscript = await this.translateToEnglish(
-          rawTranscript.text,
-          rawTranscript.language_detected || language
-        );
+        this.logger.warn('Python worker not ready, falling back to CLI pipeline');
+        return await this.processWithCli(audioBuffer, language, startTime);
       }
-
-      const processingTime = Date.now() - startTime;
-
-      return {
-        raw_transcript: rawTranscript.text,
-        english_transcript: englishTranscript.text,
-        confidence_score: Math.min(rawTranscript.confidence ?? 0.8, englishTranscript.confidence ?? 0.8),
-        processing_time_ms: processingTime,
-        language_detected: rawTranscript.language_detected,
-      };
-    } catch (error: any) {
-      this.logger.error('Speech processing failed:', error);
-      throw new Error(`Speech processing failed: ${error?.message}`);
+    } catch (error) {
+      this.logger.error('Audio processing failed:', error);
+      throw new Error(`Audio processing failed: ${error.message}`);
     }
-  
+  }
+
+  private async processWithWorker(audioBuffer: Buffer, language: string, startTime: number): Promise<TranscriptionResult> {
+    // Write audio to temp file
+    const tmpBase = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'ctxmd-'));
+    const audioPath = path.join(tmpBase, `audio_${Date.now()}.wav`);
+    
+    try {
+      await fs.promises.writeFile(audioPath, audioBuffer);
+      
+      // Submit job to Python worker
+      const jobId = await this.pythonWorker.submitJob(audioPath);
+      this.logger.log(`Submitted job ${jobId} to Python worker`);
+      
+      // Wait for completion (with 10 minute timeout)
+      const result = await this.pythonWorker.waitForJob(jobId, 600000);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Pipeline processing failed');
+      }
+      
+      // Parse results
+      const processingTime = Date.now() - startTime;
+      
+      return {
+        raw_transcript: result.raw_transcript || '[No transcript generated]',
+        english_transcript: result.translated_transcript || result.raw_transcript || '[No transcript generated]',
+        confidence_score: 0.8, // Default confidence
+        processing_time_ms: processingTime,
+        language_detected: language
+      };
+      
+    } finally {
+      // Clean up temp files
+      await fs.promises.rm(tmpBase, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+
+  private async processWithCli(audioBuffer: Buffer, language: string, startTime: number): Promise<TranscriptionResult> {
+    try {
+      // Use the existing CLI pipeline method
+      const result = await this.runPipelineCli(audioBuffer);
+      
+      const processingTime = Date.now() - startTime;
+      
+      return {
+        raw_transcript: result.text,
+        english_transcript: result.english || result.text,
+        confidence_score: result.confidence,
+        processing_time_ms: processingTime,
+        language_detected: result.language_detected,
+      };
+    } catch (error) {
+      this.logger.error('CLI processing failed:', error);
+      throw new Error(`CLI processing failed: ${error.message}`);
+    }
   }
 
   // --- CLI fallback helpers ---
@@ -231,7 +272,7 @@ export class SpeechProcessingService {
         english_confidence: translatedData?.translation_confidence || undefined,
       };
       
-      this.logger.log(`🔍 DEBUG: Final result: ${JSON.stringify(result)}`);
+      this.logger.log(`🔍 DEBUG: Final result: ${JSON.stringify(endResult)}`);
       return endResult;
 
     } finally {

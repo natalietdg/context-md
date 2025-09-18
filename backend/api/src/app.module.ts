@@ -14,6 +14,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { UserModule } from './user/user.module';
 import { AdminModule } from './admin/admin.module';
 import { PatientModule } from './patient/patient.module';
+import { HealthModule } from './health/health.module';
 
 // Import entities
 import * as entities from './entities';
@@ -46,6 +47,7 @@ import { DatabaseModule } from './database/database.module';
     HistoryModule,
     DashboardModule,
     PatientModule,
+    HealthModule,
   ],
   controllers: [AnalyzeController],
   providers: [AnalyzeService],
