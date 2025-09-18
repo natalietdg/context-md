@@ -394,9 +394,23 @@ export class ConsultationService implements OnModuleInit {
       this.consultationGateway.emitProcessingUpdate(consultationId, 'processing', 30, 'Downloading audio from S3...');
       const audioBuffer = await this.s3Service.downloadFile(consultation.aws_audio_link);
       
-      // Process audio through speech pipeline
+      // Process audio through speech pipeline with incremental database updates
       this.consultationGateway.emitProcessingUpdate(consultationId, 'processing', 50, 'Processing audio with AI models...');
-      const transcriptionResult = await this.speechProcessingService.processAudio(audioBuffer);
+      
+      // Create callback to update database incrementally
+      const updateCallback = async (partialData: any) => {
+        await this.consultationRepository.update(consultationId, partialData);
+        // Emit real-time update to frontend
+        this.consultationGateway.emitProcessingUpdate(consultationId, 'processing', 70, 'Updating transcript...');
+      };
+      
+      // Use incremental processing that updates DB after each step
+      const transcriptionResult = await this.speechProcessingService.processAudioIncrementally(
+        audioBuffer, 
+        consultationId, 
+        updateCallback,
+        'auto'
+      );
 
       // Update consultation with transcripts
       this.consultationGateway.emitProcessingUpdate(consultationId, 'processing', 90, 'Saving transcription results...');

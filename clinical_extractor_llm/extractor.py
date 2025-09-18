@@ -96,10 +96,10 @@ class ClinicalExtractorLLM:
                 model=self.model,
                 tokenizer=self.tokenizer,
                 device="cpu",
-                return_full_text=False,
+                return_full_text=True,
                 do_sample=False,  # Use greedy decoding for more consistent results
                 temperature=0.1,
-                max_new_tokens=500,  # Reduce max tokens for faster generation
+                max_new_tokens=1000,  # Reduce max tokens for faster generation
                 min_new_tokens=10,   # Ensure minimum output
                 pad_token_id=self.tokenizer.eos_token_id,
                 eos_token_id=self.tokenizer.eos_token_id
@@ -161,41 +161,29 @@ class ClinicalExtractorLLM:
     
     def create_extraction_prompt(self, transcript_text: str) -> str:
         """Create the prompt for clinical extraction."""
-        prompt = f"""You are a clinical information extraction assistant. Your task is to extract medical information from consultation transcripts.
+        prompt = f"""Extract medical information from the consultation transcript below and return a valid JSON object.
 
-From this transcript, extract only explicit facts into valid JSON with this schema:
+TRANSCRIPT: {transcript_text}
 
+Return JSON in this exact format (replace null/[] with actual values if found):
 {{
-  "summary": string,   // Brief consultation overview: "Patient presented with [issue], diagnosed with [condition], prescribed [treatment]" or similar
-  "chief_complaint": string or null,
-  "symptoms_present": [strings],
-  "symptoms_negated": [strings],
-  "onset_or_duration": string or null,
-  "allergy_substance": [strings],
-  "meds_current": [strings],
-  "conditions_past": [strings],
-  "primary_diagnosis": string or null,
-  "rx_drug": string or null,
-  "rx_dose": string or null,
-  "follow_up": string or null,
-  "red_flags": [strings]
+  "summary": null,
+  "chief_complaint": null,
+  "symptoms_present": [],
+  "symptoms_negated": [],
+  "onset_or_duration": null,
+  "allergy_substance": [],
+  "meds_current": [],
+  "conditions_past": [],
+  "primary_diagnosis": null,
+  "rx_drug": null,
+  "rx_dose": null,
+  "follow_up": null,
+  "red_flags": []
 }}
 
-Rules:
-- Only extract what is explicitly stated; do not guess.
-- Keep drug/disease names lowercase.
-- Deduplicate list entries.
-- Put negated symptoms into `symptoms_negated`.
-- `rx_drug` = drug name prescribed, `rx_dose` = dose/frequency/duration details.
-- If nothing is mentioned, return null or [].
-
-Now process this consultation transcript:
-
-{transcript_text}
-
-JSON:"""
+IMPORTANT: Return ONLY the JSON object, no other text. Do not repeat or explain."""
         
-        print(f"📝 Generated prompt:\n{prompt}\n")
         return prompt
     
     def parse_llm_response(self, response: str) -> Dict[str, Any]:
@@ -288,102 +276,82 @@ JSON:"""
             prompt = self.create_extraction_prompt(transcript_text)
             print(f"📝 Generated prompt:\n{prompt}")
             
-            try:
-                print("⏳ Generating response...")
-                
-                # Use a timeout to prevent hanging
-                import signal
-                
-                def timeout_handler(signum, frame):
-                    raise TimeoutError("LLM generation timeout")
-                
-                signal.signal(signal.SIGALRM, timeout_handler)
-                signal.alarm(45)  # Increased to 45 second timeout
+            max_attempts = 3
+            for attempt in range(max_attempts):
+                print(f"[CLINICAL] Attempt {attempt + 1}/{max_attempts}")
                 
                 try:
-                    # Try multiple generation approaches for better reliability
-                    response = None
+                    print("⏳ Generating response...")
                     
-                    # First attempt: Conservative parameters
-                    try:
-                        response = self.generator(
-                            prompt,
-                            max_new_tokens=800,  # Increased tokens for complete JSON
-                            do_sample=False,  # Greedy decoding
-                            temperature=0.0,  # Completely deterministic
-                            pad_token_id=self.tokenizer.eos_token_id,
-                            eos_token_id=self.tokenizer.eos_token_id,
-                            return_full_text=False,
-                            clean_up_tokenization_spaces=True
-                        )
-                    except Exception as e:
-                        print(f"⚠️  First generation attempt failed: {e}")
+                    # Conservative parameters to prevent repetition
+                    response = self.generator(
+                        prompt,
+                        max_new_tokens=600,  # Enough for complete JSON structure
+                        do_sample=False,  # Deterministic to avoid randomness
+                        temperature=0.0,  # No randomness
+                        repetition_penalty=1.8,  # High but not extreme penalty
+                        no_repeat_ngram_size=3,  # Prevent 3-gram repetition
+                        pad_token_id=self.tokenizer.eos_token_id,
+                        eos_token_id=self.tokenizer.eos_token_id,
+                        return_full_text=False
+                    )
+                    
+                    if response and len(response) > 0:
+                        generated_text = response[0]['generated_text'].strip()
+                        print(f"✅ LLM generated response (length: {len(generated_text)})")
                         
-                        # Second attempt: Slightly different parameters
-                        response = self.generator(
-                            prompt,
-                            max_new_tokens=600,
-                            do_sample=True,
-                            temperature=0.1,
-                            top_p=0.9,
-                            pad_token_id=self.tokenizer.eos_token_id,
-                            return_full_text=False
-                        )
-                        
-                finally:
-                    signal.alarm(0)  # Cancel timeout
-                
-                if response and len(response) > 0:
-                    generated_text = response[0]['generated_text'].strip()
-                    print(f"✅ LLM generated response (length: {len(generated_text)})")
-                    
-                    # Debug: Show first 200 chars of response
-                    preview = generated_text[:200] + "..." if len(generated_text) > 200 else generated_text
-                    print(f"🔍 Response preview: {preview}")
-                    
-                    if generated_text:  # Check if not empty
-                        return self.parse_llm_response(generated_text)
+                        # Parse JSON response
+                        try:
+                            # Clean the response - remove any markdown formatting
+                            clean_text = generated_text.replace('```json', '').replace('```', '').strip()
+                            
+                            # Parse JSON
+                            clinical_data = json.loads(clean_text)
+                            print(f"✅ Successfully parsed JSON with keys: {list(clinical_data.keys())}")
+                            return clinical_data
+                            
+                        except json.JSONDecodeError as e:
+                            print(f"❌ JSON parsing failed: {e}")
+                            # Continue to next attempt
                     else:
-                        print("❌ Generated text is empty")
-                else:
-                    print("❌ LLM returned empty response")
+                        print("❌ LLM returned empty response")
+                        
+                except Exception as e:
+                    print(f"[CLINICAL] Generation attempt {attempt + 1} failed: {e}")
+                    # Continue to next attempt
                     
-            except Exception as e:
-                print(f"⚠️  LLM extraction failed: {e}")
-                import traceback
-                traceback.print_exc()
+            # If all attempts failed, fall back to rule-based extraction
+            print("[CLINICAL] All LLM attempts failed, falling back to rule-based extraction")
         
-        # Fallback: Rule-based extraction for basic cases
+        # Fallback: Rule-based extraction
         print("🔄 Using rule-based fallback extraction...")
         return self._rule_based_extraction(transcript_text)
     
-    def _fallback_extraction(self, text: str) -> Dict[str, Any]:
+    def _rule_based_extraction(self, text: str) -> Dict[str, Any]:
         """
         Fallback extraction using simple patterns when LLM is unavailable.
         """
-        result = self._create_empty_extraction()
+        result = {
+            'chief_complaint': '',
+            'symptoms_present': [],
+            'symptoms_absent': [],
+            'medical_history': [],
+            'medications': [],
+            'allergies': [],
+            'physical_examination': {},
+            'assessment_and_plan': '',
+            'follow_up': '',
+            'summary': 'Rule-based extraction used'
+        }
         
-        # Basic pattern matching as fallback
+        # Simple keyword extraction
         text_lower = text.lower()
         
-        # Extract chief complaint (first patient statement)
-        lines = text.split('\n')
-        for line in lines:
-            if 'speaker_01:' in line.lower():
-                result['chief_complaint'] = line.strip()
-                break
-        
-        # Basic symptom detection
-        common_symptoms = ['pain', 'headache', 'fever', 'cough', 'nausea', 'dizziness']
-        for symptom in common_symptoms:
+        # Common symptoms
+        symptoms = ['fever', 'cough', 'headache', 'nausea', 'vomiting', 'diarrhea', 'fatigue']
+        for symptom in symptoms:
             if symptom in text_lower:
-                # Simple negation check
-                if any(neg in text_lower for neg in ['no ' + symptom, 'not ' + symptom, 'without ' + symptom]):
-                    result['symptoms_negated'].append(symptom)
-                else:
-                    result['symptoms_present'].append(symptom)
-        
-        result['summary'] = "Fallback extraction used"
+                result['symptoms_present'].append(symptom)
         
         return result
 

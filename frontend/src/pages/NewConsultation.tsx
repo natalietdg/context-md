@@ -66,15 +66,23 @@ const NewConsultation: React.FC = () => {
   const [externalFinal, setExternalFinal] = useState<string>('');
   const [externalInterim, setExternalInterim] = useState<string>('');
   
-  // Consent script data
+  // Consent script data - words the patient needs to say
   const currentScript = {
     words: [
-      'I', 'consent', 'to', 'this', 'consultation', 'being', 'recorded', 'for', 'medical', 'purposes', 'and', 'data', 'protection', 'compliance'
+      'I', 'consent'
     ]
   };
   
   const consentLines = [
-    'I consent to this consultation being recorded for medical purposes and data protection compliance.'
+    'You will be audio recorded during this medical consultation for the following purposes:',
+    'First, to create an accurate medical transcript for your healthcare records and treatment continuity.',
+    'Second, to ensure compliance with healthcare regulations and quality assurance standards.',
+    'Third, to enable AI-assisted clinical documentation and analysis to improve care quality.',
+    'Your personal health information will be processed according to PDPA regulations.',
+    'You have the right to access, correct, or request deletion of your recorded data at any time.',
+    'Please say "I consent" if you agree to this recording and data processing for your medical care.',
+    '',
+    'Patient should respond: "I consent"'
   ];
 
   useEffect(() => {

@@ -12,6 +12,7 @@ import { SocketService } from './socket.service';
 export interface TranscriptionResult {
   raw_transcript: string;
   english_transcript: string;
+  clinical_info?: any;
   confidence_score: number;
   processing_time_ms: number;
   language_detected?: string;
@@ -21,6 +22,8 @@ export interface TranscriptionResult {
 @Injectable()
 export class SpeechProcessingService {
   private readonly logger = new Logger(SpeechProcessingService.name);
+  private sealionTranslator: any;
+  private clinicalExtractor: any;
 
   constructor(
     private httpService: HttpService,
@@ -120,6 +123,172 @@ export class SpeechProcessingService {
     }
   }
 
+  async processAudioIncrementally(audioBuffer: Buffer, consultationId: string, updateCallback: (transcript: any) => Promise<void>, language: string = 'auto'): Promise<TranscriptionResult> {
+    const startTime = Date.now();
+
+    try {
+      // Step 1: Transcription only first
+      this.socketService.sendProcessingUpdate({
+        jobId: consultationId,
+        stage: 'transcription',
+        progress: 20,
+        message: 'Starting transcription...'
+      });
+
+      // Run transcription step only
+      const transcriptResult = await this.runTranscriptionOnly(audioBuffer);
+      
+      // Update database with raw transcript immediately
+      await updateCallback({
+        transcript_raw: transcriptResult.text,
+        processing_status: 'processing'
+      });
+
+      this.socketService.sendProcessingUpdate({
+        jobId: consultationId,
+        stage: 'translation',
+        progress: 60,
+        message: 'Transcription complete, starting translation...'
+      });
+
+      // Step 2: Translation
+      const translationResult = await this.runTranslationOnly(transcriptResult.text);
+      
+      // Update database with English transcript
+      await updateCallback({
+        transcript_eng: translationResult.english || transcriptResult.text,
+        processing_status: 'processing'
+      });
+
+      this.socketService.sendProcessingUpdate({
+        jobId: consultationId,
+        stage: 'clinical_extraction',
+        progress: 80,
+        message: 'Translation complete, extracting clinical information...'
+      });
+
+      // Step 3: Clinical extraction (optional, can fail)
+      let clinicalInfo = null;
+      try {
+        clinicalInfo = await this.runClinicalExtractionOnly(translationResult.english || transcriptResult.text);
+      } catch (e) {
+        this.logger.warn('Clinical extraction failed, continuing without it:', e);
+      }
+
+      const processingTime = Date.now() - startTime;
+      
+      return {
+        raw_transcript: transcriptResult.text,
+        english_transcript: translationResult.english || transcriptResult.text,
+        clinical_info: clinicalInfo,
+        confidence_score: transcriptResult.confidence || 0.8,
+        processing_time_ms: processingTime,
+        language_detected: transcriptResult.language_detected || language,
+        job_id: consultationId
+      };
+      
+    } catch (error) {
+      this.logger.error('Incremental audio processing failed:', error);
+      throw new Error(`Audio processing failed: ${error.message}`);
+    }
+  }
+
+  private async runTranscriptionOnly(audioBuffer: Buffer): Promise<any> {
+    // Run pipeline with transcription only (skip translation and clinical extraction)
+    const tmpBase = await require('fs').promises.mkdtemp(require('path').join(require('os').tmpdir(), 'ctxmd-'));
+    const audioPath = require('path').join(tmpBase, `audio_${Date.now()}.wav`);
+    
+    try {
+      await require('fs').promises.writeFile(audioPath, audioBuffer);
+      
+      // Run pipeline with skip flags for translation and clinical extraction
+      const pythonBin = this.resolvePythonBin();
+      const pipelinePath = this.resolvePipelinePath();
+      
+      const result = await new Promise<string>((resolve, reject) => {
+        const { execFile } = require('child_process');
+        execFile(
+          pythonBin,
+          [pipelinePath, audioPath, '--skip-translation', '--skip-clinical'],
+          { timeout: 300000 },
+          (err, stdout, stderr) => {
+            if (err) {
+              reject(new Error(`Transcription failed: ${err.message}`));
+            } else {
+              resolve(stdout);
+            }
+          }
+        );
+      });
+      
+      // Parse the pipeline output to get transcript
+      const outputDir = require('path').join(require('path').dirname(audioPath), 'output');
+      const transcriptDir = require('path').join(outputDir, '01_transcripts_lean');
+      
+      const transcriptFiles = await require('fs').promises.readdir(transcriptDir).catch(() => []);
+      if (transcriptFiles.length > 0) {
+        const transcriptContent = await require('fs').promises.readFile(
+          require('path').join(transcriptDir, transcriptFiles[0]), 
+          'utf-8'
+        );
+        const transcriptData = JSON.parse(transcriptContent);
+        
+        return {
+          text: transcriptData.transcript || transcriptData.text || '[No transcript]',
+          confidence: transcriptData.confidence || 0.8,
+          language_detected: transcriptData.language || 'unknown'
+        };
+      }
+      
+      throw new Error('No transcript file generated');
+      
+    } finally {
+      await require('fs').promises.rm(tmpBase, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+
+  private async runTranslationOnly(transcript: string): Promise<any> {
+    // Use SEA-LION translator directly for translation step
+    try {
+      if (!this.sealionTranslator) {
+        // Initialize SEA-LION translator if not already done
+        const { SeaLionTranslator } = require('../../sealion/translator');
+        this.sealionTranslator = new SeaLionTranslator();
+      }
+      
+      const translatedText = await this.sealionTranslator.translate(transcript, 'english');
+      
+      return {
+        english: translatedText,
+        confidence: 0.9
+      };
+    } catch (error) {
+      this.logger.warn('Translation failed, using original text:', error);
+      return {
+        english: transcript,
+        confidence: 0.5
+      };
+    }
+  }
+
+  private async runClinicalExtractionOnly(transcript: string): Promise<any> {
+    // Use clinical extractor LLM for extraction step
+    try {
+      if (!this.clinicalExtractor) {
+        // Initialize clinical extractor if not already done
+        const { ClinicalExtractorLLM } = require('../../clinical_extractor_llm/extractor');
+        this.clinicalExtractor = new ClinicalExtractorLLM();
+      }
+      
+      const clinicalInfo = await this.clinicalExtractor.extract_clinical_info(transcript);
+      
+      return clinicalInfo;
+    } catch (error) {
+      this.logger.warn('Clinical extraction failed:', error);
+      return null;
+    }
+  }
+
   private async processWithWorker(audioBuffer: Buffer, language: string, startTime: number): Promise<TranscriptionResult> {
     // Write audio to temp file
     const tmpBase = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'ctxmd-'));
@@ -145,6 +314,7 @@ export class SpeechProcessingService {
       return {
         raw_transcript: result.raw_transcript || '[No transcript generated]',
         english_transcript: result.translated_transcript || result.raw_transcript || '[No transcript generated]',
+        clinical_info: result.clinical_extraction ? this.parseClinicalInfo(result.clinical_extraction) : null,
         confidence_score: 0.8, // Default confidence
         processing_time_ms: processingTime,
         language_detected: language
@@ -627,13 +797,30 @@ export class SpeechProcessingService {
         }
       }
 
+      // Try multiple field names for transcript data
+      const rawText = transcriptData?.transcript || 
+                     transcriptData?.text || 
+                     transcriptData?.content ||
+                     (Array.isArray(transcriptData?.segments) ? 
+                       transcriptData.segments.map(s => s.text).join(' ') : null) ||
+                     '[No transcript generated]';
+      
+      const englishText = translatedData?.english_translation || 
+                         translatedData?.translated_text ||
+                         translatedData?.text ||
+                         translatedData?.content ||
+                         undefined;
+      
       const endResult = {
-        text: transcriptData?.transcript || '[No transcript generated]',
+        text: rawText,
         confidence: transcriptData?.confidence || 0.0,
-        language_detected: transcriptData?.language || 'unknown',
-        english: translatedData?.english_translation || undefined,
-        english_confidence: translatedData?.translation_confidence || undefined,
+        language_detected: transcriptData?.language || transcriptData?.detected_language || 'unknown',
+        english: englishText,
+        english_confidence: translatedData?.translation_confidence || translatedData?.confidence || undefined,
       };
+      
+      this.logger.log(`🔍 DEBUG: Raw transcript data structure: ${JSON.stringify(Object.keys(transcriptData || {}))}`);      
+      this.logger.log(`🔍 DEBUG: Translated data structure: ${JSON.stringify(Object.keys(translatedData || {}))}`);
       
       this.logger.log(`🔍 DEBUG: Final result: ${JSON.stringify(endResult)}`);
       return endResult;
@@ -767,5 +954,22 @@ export class SpeechProcessingService {
       processing_time_ms: totalProcessingTime,
       language_detected: results[0]?.language_detected,
     };
+  }
+
+  private parseClinicalInfo(clinicalPath: string): any {
+    try {
+      if (typeof clinicalPath === 'string' && clinicalPath.endsWith('.json')) {
+        // Read clinical extraction JSON file
+        const clinicalContent = require('fs').readFileSync(clinicalPath, 'utf-8');
+        return JSON.parse(clinicalContent);
+      } else if (typeof clinicalPath === 'object') {
+        // Already parsed object
+        return clinicalPath;
+      }
+      return null;
+    } catch (error) {
+      this.logger.error('Failed to parse clinical info:', error);
+      return null;
+    }
   }
 }
