@@ -44,7 +44,7 @@ async function bootstrap() {
   app.use(bodyJson({ limit: '50kb' }));
   app.use(urlencoded({ extended: true, limit: '50kb' }));
 
-  const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 4000;
+  const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 8080;
   await app.listen(port);
   // eslint-disable-next-line no-console
   console.log(`Nest API listening on http://localhost:${port}`);
