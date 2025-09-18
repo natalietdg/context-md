@@ -38,3 +38,4 @@ pathlib2; python_version < "3.4"
 # huggingface-hub>=0.16.0  # Not needed - included with transformers
 
 # Note: WhisperX installed separately via .ebextensions/01_install_whisperx.config 
+git+https://github.com/m-bain/whisperx.git
