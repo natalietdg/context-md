@@ -128,14 +128,6 @@ const Login: React.FC = () => {
                 </Link>
               </p>
             </div>
-
-            <div className="mt-4 p-3 bg-blue-50 rounded-md">
-              <p className="text-xs text-blue-700">
-                <strong>Demo Credentials:</strong><br />
-                Doctor: sarah.chen@contextmd.com / password123<br />
-                Patient: john.tan@email.com / password123
-              </p>
-            </div>
           </CardContent>
         </Card>
 
