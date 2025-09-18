@@ -183,8 +183,8 @@ export class PythonWorkerService extends EventEmitter implements OnModuleInit, O
           
           if (message.status === 'ok') {
             const wasReady = this.ready;
-            // Python server now always returns ready: true, but models_initialization_done indicates actual readiness
-            this.ready = message.models_initialization_done === true;
+            // Use essential_ready for practical readiness (WhisperX + S3 minimum)
+            this.ready = message.essential_ready === true || message.ready === true;
             
             // Log model loading status
             if (message.models_loaded) {
@@ -192,20 +192,37 @@ export class PythonWorkerService extends EventEmitter implements OnModuleInit, O
                 .filter(([_, loaded]) => loaded)
                 .map(([name, _]) => name);
               this.logger.log(`Python worker models loaded: ${loadedModels.join(', ')}`);
+              
+              // Log essential vs full readiness
+              if (message.essential_ready && !message.models_initialization_done) {
+                this.logger.log('Python worker essential models ready (WhisperX + S3), other models still loading');
+              } else if (message.models_initialization_done) {
+                this.logger.log('Python worker all models fully initialized');
+              }
             }
             
             if (message.model_errors && message.model_errors.length > 0) {
               this.logger.warn(`Python worker model errors: ${message.model_errors.join(', ')}`);
             }
             
-            // Emit ready event when models become ready for the first time
+            // Emit ready event when essential models become ready for the first time
             if (!wasReady && this.ready) {
               this.emit('ready');
-              this.logger.log('Python worker models fully initialized and ready');
+              this.logger.log('Python worker essential models ready - can process audio');
               // Emit model status via EventEmitter for other services to listen
-              this.emit('modelStatus', { status: 'ready', details: message.models_loaded });
+              this.emit('modelStatus', { 
+                status: 'ready', 
+                details: message.models_loaded,
+                essential_ready: message.essential_ready,
+                full_ready: message.models_initialization_done
+              });
             } else if (!this.ready) {
-              this.emit('modelStatus', { status: 'loading', details: message.models_loaded });
+              this.emit('modelStatus', { 
+                status: 'loading', 
+                details: message.models_loaded,
+                essential_ready: message.essential_ready || false,
+                full_ready: message.models_initialization_done || false
+              });
             }
           }
         }

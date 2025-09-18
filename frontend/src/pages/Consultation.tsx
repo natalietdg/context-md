@@ -750,45 +750,6 @@ const Consultation: React.FC = () => {
 
             {/* Real-time Processing Status */}
             <ProcessingStatus consultationId={consultation?.id || ''} />
-
-            {/* Consent Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Consent Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Status</span>
-                  <Badge className={consultation?.consent?.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                    {consultation?.consent?.status}
-                  </Badge>
-                </div>
-                {consultation?.consent?.aws_audio_link && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={async () => {
-                      try {
-                        const res = await apiService.replayConsent({
-                          consent_id: consultation.consent?.id || '',
-                          role: 'doctor',
-                          purpose: 'consultation_review'
-                        });
-                        if (res?.signedUrl) {
-                          setConsentAudioUrl(res.signedUrl);
-                          setIsPlayingConsent(true);
-                        }
-                      } catch (e) {
-                        setError('Failed to replay consent');
-                      }
-                    }}
-                  >
-                    <Play className="h-4 w-4 mr-2" />
-                    Replay Consent
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
