@@ -4,6 +4,7 @@ import { AppModule } from './app.module';
 import helmet from 'helmet';
 import * as dotenv from 'dotenv';
 import { json as bodyJson, urlencoded } from 'express';
+import { Logger } from '@nestjs/common';
 
 dotenv.config();
 
@@ -22,7 +23,7 @@ const allowedOrigins = new Set([
 ]);
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create(AppModule, { bufferLogs: true, logger: new Logger() });
 
   // Security headers
   app.use(helmet());
