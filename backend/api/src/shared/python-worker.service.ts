@@ -89,27 +89,21 @@ export class PythonWorkerService extends EventEmitter implements OnModuleInit, O
           this.logger.log(`Python worker spawned with PID: ${this.proc?.pid}`);
           this.restartCount = 0;
 
-          // Send a health check but DO NOT block starting the service on model readiness.
-          try { this.sendCommand({ cmd: 'health' }); } catch (e) { /* ignore */ }
+          // Do not block startup for health event. Emit ready later when health arrives.
+          resolve(); // treat process spawn as success for module init
 
-          // Start a watchdog that will emit an error if models never become ready.
-          const readyWatchMs = 120000; // 2 minutes
-          const readyTimer = setTimeout(() => {
-            if (!this.ready) {
-              this.logger.warn(`Python worker did not report ready within ${readyWatchMs}ms`);
-              // we don't reject start — but emit a warning/event
-              this.emit('warn', new Error('Python worker slow to become ready'));
-            }
-          }, readyWatchMs);
-
-          // When we do receive a ready message (in handleMessage), clear the timer
-          this.once('ready', () => {
-            clearTimeout(readyTimer);
-            this.logger.log('Python worker signaled ready (models loaded)');
-          });
-
-          // Resolve start() now — process is spawned
-          resolve();
+          // Send health check, but don't fail fast if no response
+          try {
+            this.sendCommand({ cmd: 'health' });
+            // Optionally: set a long timer to log a warning if no health response
+            setTimeout(() => {
+              if (!this.ready) {
+                this.logger.warn('Python worker did not report models loaded after spawn');
+              }
+            }, 120000); // 2 minutes
+          } catch (e) {
+            this.logger.warn('Failed to send health check to Python worker', e);
+          }
         });
 
         this.proc.on('error', (error) => {
@@ -182,11 +176,25 @@ export class PythonWorkerService extends EventEmitter implements OnModuleInit, O
           
           if (message.status === 'ok') {
             const wasReady = this.ready;
-            this.ready = message.ready === true;
+            // Python server now always returns ready: true, but models_initialization_done indicates actual readiness
+            this.ready = message.models_initialization_done === true;
+            
+            // Log model loading status
+            if (message.models_loaded) {
+              const loadedModels = Object.entries(message.models_loaded)
+                .filter(([_, loaded]) => loaded)
+                .map(([name, _]) => name);
+              this.logger.log(`Python worker models loaded: ${loadedModels.join(', ')}`);
+            }
+            
+            if (message.model_errors && message.model_errors.length > 0) {
+              this.logger.warn(`Python worker model errors: ${message.model_errors.join(', ')}`);
+            }
             
             // Emit ready event when models become ready for the first time
             if (!wasReady && this.ready) {
               this.emit('ready');
+              this.logger.log('Python worker models fully initialized and ready');
             }
           }
         }

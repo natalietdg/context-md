@@ -32,9 +32,11 @@ sys.path.insert(0, str(project_root / "whisperX"))
 sys.path.insert(0, str(project_root / "sealion"))
 sys.path.insert(0, str(project_root / "clinical_extractor_llm"))
 
-# Global variables for non-blocking startup
-_models: Dict[str, Any] = {}
-_models_ready = Event()
+# Global variables for non-blocking startup with immediate health response
+models = {"whisperx": None, "translator": None, "clinical": None, "s3": None}
+models_lock = threading.Lock()
+models_ready_event = threading.Event()
+models_loading_errors = []
 
 def log(message: str):
     """Log to stderr for debugging"""
@@ -187,20 +189,26 @@ def run_pipeline(models: Dict[str, Any], audio_input: str, job_id: str) -> Dict[
             "trace": traceback.format_exc()
         }
 
-def _background_load_and_warmup():
+def background_load_and_warmup():
     """Load and warm up models in background thread"""
-    global _models
+    global models
     try:
         log("BACKGROUND: Starting model loading...")
-        _models = load_models()              # may take a while
+        loaded = load_models()  # existing function returns dict
+        with models_lock:
+            models.update(loaded)
         log("BACKGROUND: Models loaded, starting warmup...")
-        warmup_models(_models)               # may JIT; may take a while
-        _models_ready.set()
-        log("BACKGROUND: models loaded and warmed up")
+        # do warmup (existing warmup_models)
+        try:
+            warmup_models(models)
+        except Exception as e:
+            log(f"Warmup failed: {e}")
+        models_ready_event.set()
+        log("Background model load completed")
     except Exception as e:
-        log(f"BACKGROUND: model load/warmup failed: {e}")
-        # keep _models as whatever loaded (possibly partial)
-        _models_ready.set()  # set anyway to avoid indefinite waiting
+        models_loading_errors.append(str(e))
+        log(f"Background model load failed: {e}")
+        models_ready_event.set()
 
 def warmup_models(models: Dict[str, Any]):
     """Warm up models with dummy data to trigger JIT compilation"""
@@ -276,13 +284,15 @@ def process_command(models: Dict[str, Any], line: str):
         if cmd == "health":
             send_response({
                 "status": "ok",
-                "ready": _models_ready.is_set(),
+                "ready": True,
                 "models_loaded": {
-                    "whisperx": bool(_models.get('whisperx')),
-                    "translator": bool(_models.get('translator')),
-                    "clinical": bool(_models.get('clinical')),
-                    "s3": bool(_models.get('s3')),
-                }
+                    "whisperx": models.get('whisperx') is not None,
+                    "translator": models.get('translator') is not None,
+                    "clinical": models.get('clinical') is not None,
+                    "s3": models.get('s3') is not None
+                },
+                "models_initialization_done": models_ready_event.is_set(),
+                "model_errors": models_loading_errors[:]
             })
             return
 
@@ -292,20 +302,23 @@ def process_command(models: Dict[str, Any], line: str):
 
 def main():
     """Main server loop"""
-    log("Pipeline server starting (non-blocking load)...")
+    log("Pipeline server starting (health available immediately)...")
 
-    # launch background loader immediately, do NOT block
-    loader = threading.Thread(target=_background_load_and_warmup, daemon=True)
-    loader.start()
+    # start background model loader (non-blocking)
+    bg = threading.Thread(target=background_load_and_warmup, daemon=True)
+    bg.start()
 
-    log("Pipeline server listening for commands on stdin")
-    # use the same command loop, but use global _models
+    log("Pipeline server ready - listening for commands on stdin")
+
+    # Main command loop remains -- but update health path to report model status
     try:
         for raw_line in sys.stdin:
             line = raw_line.strip()
             if not line:
                 continue
-            process_command(_models, line)
+
+            # health handling will use the global models mapping
+            process_command(models, line)
     except KeyboardInterrupt:
         log("Pipeline server shutting down...")
     except Exception as e:
