@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { CheckCircle, Clock, AlertCircle } from 'lucide-react';
 
 interface ProcessingStatusProps {
   consultationId?: string;
@@ -117,84 +119,109 @@ export const ProcessingStatus: React.FC<ProcessingStatusProps> = ({
     return 'bg-blue-500';
   };
 
-  const showProcessingStatus = processingUpdate && consultationId;
-  const showModelStatus = !consultationId || modelStatus?.status === 'loading';
+  // Derive status from WebSocket updates and model status
+  const status = {
+    audioUploaded: processingUpdate?.status === 'processing' || processingUpdate?.status === 'completed',
+    transcriptionComplete: processingUpdate?.status === 'completed',
+    transcriptionInProgress: processingUpdate?.status === 'processing' && processingUpdate?.message?.includes('transcrib'),
+    translationComplete: processingUpdate?.status === 'completed',
+    translationInProgress: processingUpdate?.status === 'processing' && processingUpdate?.message?.includes('translat'),
+    clinicalComplete: processingUpdate?.status === 'completed',
+    clinicalInProgress: processingUpdate?.status === 'processing' && processingUpdate?.message?.includes('clinical'),
+    currentStep: processingUpdate?.message || getModelStatusMessage(),
+    progress: processingUpdate?.progress
+  };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 max-w-md mx-auto">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-800">
-          {showProcessingStatus ? 'Processing Audio' : 'System Status'}
-        </h3>
-        <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`} />
-      </div>
-
-      {/* Model Status */}
-      {showModelStatus && (
-        <div className="mb-6">
-          <div className="flex items-center mb-2">
-            <div className={`w-2 h-2 rounded-full mr-2 ${
-              modelStatus?.status === 'ready' ? 'bg-green-400' : 
-              modelStatus?.status === 'loading' ? 'bg-yellow-400 animate-pulse' : 
-              'bg-red-400'
-            }`} />
-            <span className="text-sm text-gray-600">AI Models</span>
-          </div>
-          <p className="text-sm text-gray-700 mb-3">{getModelStatusMessage()}</p>
-          
-          {modelStatus?.status === 'loading' && (
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div className="bg-yellow-400 h-2 rounded-full animate-pulse" style={{ width: '60%' }} />
-            </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center space-x-2">
+          <Clock className="h-5 w-5" />
+          <span>Processing Status</span>
+          {!isConnected && (
+            <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" title="Disconnected" />
           )}
-        </div>
-      )}
+          {isConnected && (
+            <div className="h-2 w-2 rounded-full bg-green-500" title="Connected" />
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {/* Model loading status */}
+        {modelStatus?.status === 'loading' && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-start space-x-2">
+              <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-amber-800">
+                <p className="font-medium">Loading AI models...</p>
+                <p className="text-xs mt-1">{getModelStatusMessage()}</p>
+                <p className="text-xs mt-1">This may take 2-5 minutes on first run. Subsequent runs will be much faster.</p>
+              </div>
+            </div>
+          </div>
+        )}
 
-      {/* Processing Status */}
-      {showProcessingStatus && (
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700">Progress</span>
-            <span className="text-sm text-gray-500">{processingUpdate.progress || 0}%</span>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-600">Audio Upload</span>
+            {status.audioUploaded ? (
+              <CheckCircle className="h-5 w-5 text-green-500" />
+            ) : (
+              <div className="h-5 w-5 rounded-full border-2 border-gray-300" />
+            )}
           </div>
           
-          <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
-            <div 
-              className={`h-2 rounded-full transition-all duration-300 ${getProgressColor()}`}
-              style={{ width: `${processingUpdate.progress || 0}%` }}
-            />
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-600">Transcription</span>
+            {status.transcriptionComplete ? (
+              <CheckCircle className="h-5 w-5 text-green-500" />
+            ) : status.transcriptionInProgress ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
+            ) : (
+              <div className="h-5 w-5 rounded-full border-2 border-gray-300" />
+            )}
           </div>
           
-          <p className="text-sm text-gray-600 mb-2">
-            {processingUpdate.message || 'Processing...'}
-          </p>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-600">Translation</span>
+            {status.translationComplete ? (
+              <CheckCircle className="h-5 w-5 text-green-500" />
+            ) : status.translationInProgress ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
+            ) : (
+              <div className="h-5 w-5 rounded-full border-2 border-gray-300" />
+            )}
+          </div>
           
-          <div className="flex items-center">
-            {processingUpdate.status === 'processing' && (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2" />
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-600">Clinical Extraction</span>
+            {status.clinicalComplete ? (
+              <CheckCircle className="h-5 w-5 text-green-500" />
+            ) : status.clinicalInProgress ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
+            ) : (
+              <div className="h-5 w-5 rounded-full border-2 border-gray-300" />
             )}
-            {processingUpdate.status === 'completed' && (
-              <div className="text-green-500 mr-2">✓</div>
-            )}
-            {processingUpdate.status === 'error' && (
-              <div className="text-red-500 mr-2">✗</div>
-            )}
-            <span className="text-xs text-gray-500">
-              {new Date(processingUpdate.timestamp).toLocaleTimeString()}
-            </span>
           </div>
         </div>
-      )}
-
-      {/* First-time user guidance */}
-      {modelStatus?.status === 'loading' && (
-        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-          <p className="text-sm text-blue-700">
-            <strong>First-time setup:</strong> AI models are loading in the background. 
-            This may take 2-3 minutes on first run, but subsequent processing will be much faster.
-          </p>
-        </div>
-      )}
-    </div>
+        
+        {status.currentStep && (
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800">{status.currentStep}</p>
+            {status.progress && (
+              <div className="mt-2">
+                <div className="bg-blue-200 rounded-full h-2">
+                  <div 
+                    className={`h-2 rounded-full transition-all duration-300 ${getProgressColor()}`}
+                    style={{ width: `${status.progress}%` }}
+                  />
+                </div>
+                <p className="text-xs text-blue-700 mt-1">{status.progress}% complete</p>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };

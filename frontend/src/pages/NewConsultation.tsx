@@ -502,6 +502,20 @@ const NewConsultation: React.FC = () => {
               )}
             </div>
 
+            {/* First Run Warning */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start space-x-2">
+                <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-blue-800">
+                  <p className="font-medium">Processing Time Notice</p>
+                  <p className="text-xs mt-1">
+                    First-time processing may take 2-5 minutes as the system loads AI models. 
+                    Subsequent consultations will process much faster as models stay warm in memory.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Action Buttons */}
             <div className="flex gap-3 pt-4">
               <Button
