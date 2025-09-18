@@ -73,7 +73,7 @@ class ClinicalExtractorLLM:
             
             # Model loading parameters
             model_kwargs = {
-                "dtype": torch.float16,  
+                "torch_dtype": torch.float16,  
                 "trust_remote_code": True,
                 "low_cpu_mem_usage": True
             }
