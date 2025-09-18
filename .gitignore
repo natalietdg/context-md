@@ -48,4 +48,64 @@ Thumbs.db
 *.log
 logs/ 
 
+# Node.js
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Backend build output
+backend/api/dist/
+backend/api/.env
+backend/api/.env.local
+
+# Frontend build output
+frontend/build/
+frontend/.env
+frontend/.env.local
+
+# Audio cache and outputs
+audio_cache/
+outputs/
+transcript_output/
+
+# Database files
+*.db
+*.sqlite
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Security sensitive files
+*.pem
+*.key
+*.crt
+rds-ca-*.pem
+
+# AWS and deployment
+.elasticbeanstalk/
+.aws/
+
+# Python cache and environments
+.pytest_cache/
+.coverage
+htmlcov/
+
+# AI model cache
+.cache/
+models/
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
