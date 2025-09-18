@@ -219,17 +219,17 @@ export class SpeechProcessingService {
       this.socketService.sendProcessingUpdate({
         jobId,
         stage: 'transcription',
-        progress: 20,
+        progress: 5,
         message: 'Starting CLI pipeline processing...'
       });
 
-      // Use the existing CLI pipeline method
-      const result = await this.runPipelineCli(audioBuffer);
+      // Use the CLI pipeline method with real-time updates
+      const result = await this.runPipelineCliWithUpdates(audioBuffer, jobId);
       
       this.socketService.sendProcessingUpdate({
         jobId,
-        stage: 'transcription',
-        progress: 80,
+        stage: 'completed',
+        progress: 95,
         message: 'CLI processing completed, preparing results...'
       });
       
@@ -283,6 +283,199 @@ export class SpeechProcessingService {
   private resolvePythonBin(): string {
     const pythonBin = process.env.VENV_PYTHON || path.join(this.resolveRepoRoot(), 'venv', 'bin', 'python3');
     return pythonBin;
+  }
+
+  private async runPipelineCliWithUpdates(audioBuffer: Buffer, jobId: string): Promise<{
+    text: string;
+    confidence: number;
+    language_detected: string;
+    english?: string;
+  }> {
+    const tmpBase = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'ctxmd-'));
+    const audioPath = path.join(tmpBase, `audio_${Date.now()}.wav`);
+    
+    await fs.promises.writeFile(audioPath, audioBuffer);
+
+    try {
+      const pythonBin = this.resolvePythonBin();
+      const pipelinePath = this.resolvePipelinePath();
+      
+      this.socketService.sendProcessingUpdate({
+        jobId,
+        stage: 'transcription',
+        progress: 10,
+        message: 'Initializing Python pipeline...'
+      });
+      
+      const result = await new Promise<string>((resolve, reject) => {
+        const child = execFile(
+          pythonBin,
+          [pipelinePath, audioPath],
+          {
+            env: {
+              ...process.env,
+              SEALION_API_KEY: process.env.SEALION_API_KEY,
+            },
+            timeout: 600000, // 10 minute timeout
+          },
+          (err, stdout, stderr) => {
+            if (err) {
+              this.logger.error('Pipeline execution error:', err);
+              this.logger.error('Pipeline stderr:', stderr);
+              reject(new Error(`Pipeline failed: ${err.message}`));
+            } else {
+              this.logger.log('Pipeline completed successfully');
+              resolve(stdout);
+            }
+          }
+        );
+
+        // Parse real-time output for progress updates
+        let currentProgress = 15;
+        child.stdout?.on('data', (data: string) => {
+          const output = data.toString();
+          this.logger.log('Pipeline stdout:', output);
+          
+          // Parse progress messages and send Socket.IO updates
+          const lines = output.split('\n');
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+
+            let message = trimmed;
+            let progress = currentProgress;
+            let stage: 'transcription' | 'translation' | 'clinical_extraction' = 'transcription';
+
+            // Map specific pipeline messages to progress
+            if (trimmed.includes('Initializing WhisperX transcriber')) {
+              progress = 20;
+              message = 'Loading WhisperX models (this may take 2-5 minutes)...';
+            } else if (trimmed.includes('WhisperX transcriber initialized')) {
+              progress = 35;
+              message = 'WhisperX models loaded successfully';
+            } else if (trimmed.includes('Initializing SEA-LION translator')) {
+              progress = 40;
+              stage = 'translation';
+              message = 'Loading translation models...';
+            } else if (trimmed.includes('SEA-LION translator initialized')) {
+              progress = 45;
+              stage = 'translation';
+              message = 'Translation models loaded';
+            } else if (trimmed.includes('Initializing Clinical extractor')) {
+              progress = 50;
+              stage = 'clinical_extraction';
+              message = 'Loading clinical extraction models...';
+            } else if (trimmed.includes('Clinical extractor initialized')) {
+              progress = 55;
+              stage = 'clinical_extraction';
+              message = 'Clinical models loaded';
+            } else if (trimmed.includes('Starting transcription')) {
+              progress = 60;
+              message = 'Starting audio transcription...';
+            } else if (trimmed.includes('Transcription completed')) {
+              progress = 70;
+              message = 'Audio transcription completed';
+            } else if (trimmed.includes('Starting translation')) {
+              progress = 75;
+              stage = 'translation';
+              message = 'Translating transcript...';
+            } else if (trimmed.includes('Translation completed')) {
+              progress = 80;
+              stage = 'translation';
+              message = 'Translation completed';
+            } else if (trimmed.includes('Starting clinical extraction')) {
+              progress = 85;
+              stage = 'clinical_extraction';
+              message = 'Extracting clinical information...';
+            } else if (trimmed.includes('Clinical extraction completed')) {
+              progress = 90;
+              stage = 'clinical_extraction';
+              message = 'Clinical extraction completed';
+            }
+
+            // Send update if progress changed or it's an important message
+            if (progress !== currentProgress || trimmed.includes('✅') || trimmed.includes('🔄')) {
+              this.socketService.sendProcessingUpdate({
+                jobId,
+                stage,
+                progress,
+                message
+              });
+              currentProgress = progress;
+            }
+          }
+        });
+
+        child.stderr?.on('data', (data: string) => {
+          const output = data.toString();
+          this.logger.log('Pipeline stderr:', output);
+          
+          // Send non-error stderr as progress updates (model loading messages)
+          if (!output.toLowerCase().includes('error') && !output.toLowerCase().includes('failed')) {
+            this.socketService.sendProcessingUpdate({
+              jobId,
+              stage: 'transcription',
+              progress: currentProgress,
+              message: output.trim()
+            });
+          }
+        });
+      });
+
+      // Parse final result
+      return this.parsePipelineOutput(result);
+      
+    } finally {
+      // Clean up temp files
+      await fs.promises.rm(tmpBase, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+
+  private parsePipelineOutput(stdout: string): {
+    text: string;
+    confidence: number;
+    language_detected: string;
+    english?: string;
+  } {
+    try {
+      // Try to parse as JSON first (if pipeline outputs JSON)
+      const jsonMatch = stdout.match(/\{.*\}/s);
+      if (jsonMatch) {
+        const result = JSON.parse(jsonMatch[0]);
+        return {
+          text: result.transcript || result.text || '[No transcript generated]',
+          confidence: result.confidence || 0.8,
+          language_detected: result.language || result.language_detected || 'unknown',
+          english: result.english_translation || result.english
+        };
+      }
+
+      // Fallback: extract from text output
+      const lines = stdout.split('\n');
+      let transcript = '';
+      let language = 'unknown';
+      
+      for (const line of lines) {
+        if (line.includes('Transcript:') || line.includes('transcript:')) {
+          transcript = line.split(':')[1]?.trim() || '';
+        } else if (line.includes('Language:') || line.includes('language:')) {
+          language = line.split(':')[1]?.trim() || 'unknown';
+        }
+      }
+
+      return {
+        text: transcript || '[No transcript generated]',
+        confidence: 0.8,
+        language_detected: language,
+      };
+    } catch (error) {
+      this.logger.error('Failed to parse pipeline output:', error);
+      return {
+        text: '[Pipeline output parsing failed]',
+        confidence: 0.0,
+        language_detected: 'unknown',
+      };
+    }
   }
 
   private async runPipelineCli(audioBuffer: Buffer): Promise<{

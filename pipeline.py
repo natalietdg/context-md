@@ -130,6 +130,7 @@ class AudioProcessingPipeline:
             self.translator = None
         
         try:
+            print(f"🔄 Initializing Clinical extractor with model: {clinical_model} (loading model weights...)...")
             self.clinical_extractor = ClinicalExtractorLLM(model_name=clinical_model)
             print(f"✅ Clinical extractor initialized with model: {clinical_model}")
         except Exception as e:
