@@ -104,10 +104,10 @@ export class AuthService {
       // Compare against encrypted email stored in _email field
       this.logger.log('user.email', user.email);
 
-      this.logger.log('email', email);
+      this.logger.log('email', encryptDeterministic(email));
 
       this.logger.log('user.password_hash', user.password_hash);
-      this.logger.log('password', password);
+      this.logger.log('password', encryptDeterministic(password));
       if (user.email === encryptDeterministic(email)) {
         matchingUser = user;
         break;
