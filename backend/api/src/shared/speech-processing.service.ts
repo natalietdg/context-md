@@ -115,7 +115,7 @@ export class SpeechProcessingService {
               ...process.env,
               SEALION_API_KEY: process.env.SEALION_API_KEY,
             },
-            timeout: 300000, // 5 minute timeout
+            timeout: 600000, // 10 minute timeout for model downloads
           },
           (err, stdout, stderr) => {
             this.logger.log('🔍 DEBUG: execFile callback triggered');

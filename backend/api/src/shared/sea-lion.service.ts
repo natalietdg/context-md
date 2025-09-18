@@ -31,6 +31,8 @@ export class SeaLionService {
   constructor(private httpService: HttpService) {
     this.apiEndpoint = process.env.SEALION_ENDPOINT || 'https://api.sea-lion.ai/v1/chat/completions';
     this.apiKey = process.env.SEALION_API_KEY;
+    this.logger.log(`🔍 DEBUG: SEA-LION endpoint: ${this.apiEndpoint}`);
+    this.logger.log(`🔍 DEBUG: SEA-LION API key set: ${this.apiKey ? 'Yes' : 'No'}`);
   }
 
   async generateMedicalReport(
