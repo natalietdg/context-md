@@ -5,38 +5,31 @@ import helmet from 'helmet';
 import * as dotenv from 'dotenv';
 import { json as bodyJson, urlencoded } from 'express';
 import { Logger } from '@nestjs/common';
+import { createServer } from 'http';
 import { Server as IOServer } from 'socket.io';
+import { SocketService } from './shared/socket.service';
 
 dotenv.config();
 
-// Debug: Log database connection info
-console.log('DATABASE_HOST:', process.env.DATABASE_HOST);
-console.log('DATABASE_SSL:', process.env.DATABASE_SSL);
-console.log('ENVIRONMENT:', process.env.ENVIRONMENT);
+const logger = new Logger('Bootstrap');
 
-const allowedOrigins = new Set([
+const allowedOrigins = new Set<string>([
   'http://localhost:3000',
   'https://contextmd.netlify.app',
   'https://contextmd.net',
   'https://www.contextmd.net',
   'https://d12pwir1jq0uw0.cloudfront.net',
-  "https://api.contextmd.net",
- " https://www.contextmd.net/",
-  'https://contextmd.net/',
+  'https://api.contextmd.net',
 ]);
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true, logger: new Logger() });
-
-  // Security headers
+  // create app
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.use(helmet());
 
-  // CORS
   app.enableCors({
-    origin: (origin, callback) => {
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
       if (!origin || allowedOrigins.has(origin)) return callback(null, true);
-      // if (ALLOWED_ORIGINS.has(origin)) return callback(null, true);
-      // default allow the production site
       return callback(new Error('Not allowed by CORS'));
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -44,15 +37,24 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // Body size limits (50KB)
+  // body limits
   app.use(bodyJson({ limit: '50kb' }));
   app.use(urlencoded({ extended: true, limit: '50kb' }));
 
   const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 8080;
-  await app.listen(port);
+  const host = process.env.HOST || '0.0.0.0';
 
-  // Attach Socket.IO to the same HTTP server
-  const httpServer = app.getHttpServer();
+  // listen (log and handle bind errors)
+  try {
+    await app.listen(port, host);
+    logger.log(`Nest application listening on ${host}:${port}`);
+  } catch (err) {
+    logger.error(`Failed to listen on ${host}:${port}: ${(err as Error).message}`);
+    process.exit(1);
+  }
+
+  // attach Socket.IO to the same server created by Nest
+  const httpServer = app.getHttpServer(); // reuse existing server - avoids creating a second listener
   const io = new IOServer(httpServer, {
     cors: {
       origin: (origin, callback) => {
@@ -65,26 +67,55 @@ async function bootstrap() {
     transports: ['websocket', 'polling'],
   });
 
-  // Socket.IO connection handling
   io.on('connection', (socket) => {
-    console.log(`Socket.IO client connected: ${socket.id}`);
-    
-    socket.on('disconnect', () => {
-      console.log(`Socket.IO client disconnected: ${socket.id}`);
+    logger.log(`Socket.IO client connected: ${socket.id}`);
+
+    socket.on('disconnect', (reason) => {
+      logger.log(`Socket.IO client disconnected: ${socket.id} (${reason})`);
     });
 
-    // Join room for audio processing updates
     socket.on('join-processing', (jobId: string) => {
       socket.join(`processing-${jobId}`);
-      console.log(`Client ${socket.id} joined processing room for job ${jobId}`);
+      logger.log(`Socket ${socket.id} joined processing-${jobId}`);
     });
   });
 
-  // Make io available globally for other services
-  (global as any).io = io;
+  // register io in the SocketService
+  try {
+    const socketService = app.get(SocketService);
+    if (socketService && typeof (socketService as any).setIo === 'function') {
+      (socketService as any).setIo(io);
+      logger.log('SocketService.setIo(io) invoked successfully');
+    } else {
+      logger.warn('SocketService does not expose setIo(io) — ensure it reads global.io or add setIo method');
+      // fallback for older code:
+      (global as any).io = io;
+    }
+  } catch (err) {
+    logger.warn('Could not set io on SocketService: ' + (err as Error).message);
+    (global as any).io = io;
+  }
 
-  // eslint-disable-next-line no-console
-  console.log(`Nest API with Socket.IO listening on http://localhost:${port}`);
+  // graceful shutdown wiring
+  const shutdown = async (signal: string) => {
+    logger.log(`Received ${signal} - shutting down`);
+    try {
+      io.close();
+    } catch (e) {
+      logger.warn('Error closing io: ' + (e as Error).message);
+    }
+    try {
+      await app.close();
+    } catch (e) {
+      logger.warn('Error closing app: ' + (e as Error).message);
+    }
+    process.exit(0);
+  };
+
+  process.once('SIGINT', () => shutdown('SIGINT'));
+  process.once('SIGTERM', () => shutdown('SIGTERM'));
+
+  logger.log(`API + Socket.IO ready at http://${host}:${port}`);
 }
 
 bootstrap().catch((err) => {

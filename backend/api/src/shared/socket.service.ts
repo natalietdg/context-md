@@ -10,34 +10,31 @@ export interface ProcessingUpdate {
   error?: string;
 }
 
+/**
+ * SocketService: holds the socket.io server instance and provides helpers.
+ * Use setIo(io) during bootstrap to inject the server.
+ */
 @Injectable()
 export class SocketService {
   private readonly logger = new Logger(SocketService.name);
-  private io: IOServer;
+  private io?: IOServer;
 
-  constructor() {
-    // Get the global io instance set in main.ts
-    this.io = (global as any).io;
+  /** Called from main.ts after io is created */
+  setIo(io: IOServer) {
+    this.io = io;
+    this.logger.log('Socket.IO instance set on SocketService');
   }
 
-  /**
-   * Send processing update to clients listening for a specific job
-   */
   sendProcessingUpdate(update: ProcessingUpdate): void {
     if (!this.io) {
       this.logger.warn('Socket.IO server not initialized');
       return;
     }
-
     const room = `processing-${update.jobId}`;
     this.io.to(room).emit('processing-update', update);
-    
-    this.logger.log(`Sent processing update to room ${room}: ${update.stage} - ${update.message}`);
+    this.logger.log(`Sent processing update to ${room}: ${update.stage} (${update.progress}%)`);
   }
 
-  /**
-   * Send model status update to all connected clients
-   */
   sendModelStatusUpdate(status: {
     status: 'loading' | 'ready' | 'error';
     details: Record<string, boolean>;
@@ -48,38 +45,28 @@ export class SocketService {
       this.logger.warn('Socket.IO server not initialized');
       return;
     }
-
     this.io.emit('model-status', status);
-    this.logger.log(`Sent model status update: ${status.status}`);
+    this.logger.log(`Sent model status: ${status.status}`);
   }
 
-  /**
-   * Send general notification to all clients
-   */
   sendNotification(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info'): void {
     if (!this.io) {
       this.logger.warn('Socket.IO server not initialized');
       return;
     }
-
     this.io.emit('notification', { message, type, timestamp: new Date().toISOString() });
     this.logger.log(`Sent notification: ${type} - ${message}`);
   }
 
-  /**
-   * Get number of connected clients
-   */
   getConnectedClientsCount(): number {
     if (!this.io) return 0;
     return this.io.engine.clientsCount;
   }
 
-  /**
-   * Get clients in a specific room
-   */
   getClientsInRoom(room: string): number {
     if (!this.io) return 0;
-    const roomClients = this.io.sockets.adapter.rooms.get(room);
-    return roomClients ? roomClients.size : 0;
+    const r = this.io.sockets.adapter.rooms.get(room);
+    return r ? r.size : 0;
   }
 }
+export default SocketService;

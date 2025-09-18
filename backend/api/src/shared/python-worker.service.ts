@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Inject, Optional } f
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import { EventEmitter } from 'events';
+import { SocketService } from './socket.service';
 
 interface Job {
   status: 'pending' | 'running' | 'done' | 'failed';
@@ -35,7 +36,9 @@ export class PythonWorkerService extends EventEmitter implements OnModuleInit, O
   private readonly pythonBin: string;
   private readonly pipelineServerPath: string;
 
-  constructor() {
+  constructor(
+    @Optional() private socketService?: SocketService
+  ) {
     super();
     this.pythonBin = process.env.PYTHON_BIN || path.join(process.cwd(), '../../venv/bin/python3');
     this.pipelineServerPath = process.env.PIPELINE_SCRIPT || path.join(process.cwd(), '../../pipeline_server.py');
@@ -209,6 +212,17 @@ export class PythonWorkerService extends EventEmitter implements OnModuleInit, O
             if (!wasReady && this.ready) {
               this.emit('ready');
               this.logger.log('Python worker essential models ready - can process audio');
+              
+              // Broadcast model status via Socket.IO
+              if (this.socketService) {
+                this.socketService.sendModelStatusUpdate({
+                  status: 'ready',
+                  details: message.models_loaded,
+                  essential_ready: message.essential_ready,
+                  full_ready: message.models_initialization_done
+                });
+              }
+              
               // Emit model status via EventEmitter for other services to listen
               this.emit('modelStatus', { 
                 status: 'ready', 
@@ -217,6 +231,16 @@ export class PythonWorkerService extends EventEmitter implements OnModuleInit, O
                 full_ready: message.models_initialization_done
               });
             } else if (!this.ready) {
+              // Broadcast loading status via Socket.IO
+              if (this.socketService) {
+                this.socketService.sendModelStatusUpdate({
+                  status: 'loading',
+                  details: message.models_loaded,
+                  essential_ready: message.essential_ready || false,
+                  full_ready: message.models_initialization_done || false
+                });
+              }
+              
               this.emit('modelStatus', { 
                 status: 'loading', 
                 details: message.models_loaded,

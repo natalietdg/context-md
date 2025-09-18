@@ -156,6 +156,99 @@ export class SpeechProcessingService {
     }
   }
 
+  private async processWithWorkerUpdates(audioBuffer: Buffer, language: string, startTime: number, jobId: string): Promise<TranscriptionResult> {
+    // Write audio to temp file
+    const tmpBase = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'ctxmd-'));
+    const audioPath = path.join(tmpBase, `audio_${Date.now()}.wav`);
+    
+    try {
+      await fs.promises.writeFile(audioPath, audioBuffer);
+      
+      this.socketService.sendProcessingUpdate({
+        jobId,
+        stage: 'transcription',
+        progress: 20,
+        message: 'Audio file prepared, submitting to Python worker...'
+      });
+      
+      // Submit job to Python worker
+      const workerJobId = await this.pythonWorker.submitJob(audioPath);
+      this.logger.log(`Submitted job ${workerJobId} to Python worker`);
+      
+      this.socketService.sendProcessingUpdate({
+        jobId,
+        stage: 'transcription',
+        progress: 30,
+        message: 'Job submitted to Python worker, processing audio...'
+      });
+      
+      // Wait for completion (with 10 minute timeout)
+      const result = await this.pythonWorker.waitForJob(workerJobId, 600000);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Pipeline processing failed');
+      }
+      
+      this.socketService.sendProcessingUpdate({
+        jobId,
+        stage: 'transcription',
+        progress: 80,
+        message: 'Transcription completed, preparing results...'
+      });
+      
+      // Parse results
+      const processingTime = Date.now() - startTime;
+      
+      return {
+        raw_transcript: result.raw_transcript || '[No transcript generated]',
+        english_transcript: result.translated_transcript || result.raw_transcript || '[No transcript generated]',
+        confidence_score: 0.8, // Default confidence
+        processing_time_ms: processingTime,
+        language_detected: language,
+        job_id: jobId
+      };
+      
+    } finally {
+      // Clean up temp files
+      await fs.promises.rm(tmpBase, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+
+  private async processWithCliUpdates(audioBuffer: Buffer, language: string, startTime: number, jobId: string): Promise<TranscriptionResult> {
+    try {
+      this.socketService.sendProcessingUpdate({
+        jobId,
+        stage: 'transcription',
+        progress: 20,
+        message: 'Starting CLI pipeline processing...'
+      });
+
+      // Use the existing CLI pipeline method
+      const result = await this.runPipelineCli(audioBuffer);
+      
+      this.socketService.sendProcessingUpdate({
+        jobId,
+        stage: 'transcription',
+        progress: 80,
+        message: 'CLI processing completed, preparing results...'
+      });
+      
+      const processingTime = Date.now() - startTime;
+      
+      return {
+        raw_transcript: result.text,
+        english_transcript: result.english || result.text,
+        confidence_score: result.confidence,
+        processing_time_ms: processingTime,
+        language_detected: result.language_detected,
+        job_id: jobId
+      };
+    } catch (error) {
+      this.logger.error('CLI processing failed:', error);
+      throw new Error(`CLI processing failed: ${error.message}`);
+    }
+  }
+
   private async processWithCli(audioBuffer: Buffer, language: string, startTime: number): Promise<TranscriptionResult> {
     try {
       // Use the existing CLI pipeline method
