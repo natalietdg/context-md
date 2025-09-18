@@ -25,7 +25,8 @@ import { AnalyzeService } from './services/analyze.service';
 import { RateLimitMiddleware } from './middleware/rate-limit.middleware';
 import { SecurityMiddleware } from './middleware/security.middleware';
 import { DatabaseModule } from './database/database.module';
-
+import * as dotenv from 'dotenv';
+dotenv.config();  
 @Module({
   imports: [
     DatabaseModule,
