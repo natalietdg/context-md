@@ -294,6 +294,47 @@ Preserve the exact [TURN_X] markers and return the translation in the same forma
         except Exception as e:
             print(f"❌ Translation failed: {str(e)}")
             raise
+    
+    def translate_transcript(self, transcript_path: str) -> str:
+        """
+        Pipeline-compatible method to translate transcript file
+        
+        Args:
+            transcript_path: Path to lean transcript JSON file
+            
+        Returns:
+            Path to translated JSON file (or original path if translation fails/skipped)
+        """
+        try:
+            # Read transcript file
+            with open(transcript_path, 'r', encoding='utf-8') as f:
+                transcript_data = json.load(f)
+            
+            # Check if translation should be skipped
+            if self.should_skip_translation(transcript_data):
+                return transcript_path
+            
+            # Translate the transcript
+            translated_data = self.translate_json(transcript_data)
+            
+            # Save translated result
+            from pathlib import Path
+            input_path = Path(transcript_path)
+            translated_filename = f"{input_path.stem}_translated.json"
+            translated_path = input_path.parent.parent / "02_translated" / translated_filename
+            
+            # Ensure output directory exists
+            translated_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            with open(translated_path, 'w', encoding='utf-8') as f:
+                json.dump(translated_data, f, indent=2, ensure_ascii=False)
+            
+            print(f"✅ Translation completed: {translated_path}")
+            return str(translated_path)
+            
+        except Exception as e:
+            print(f"❌ Translation failed: {e}")
+            return transcript_path  # Return original path on failure
 
 
 def main():

@@ -90,17 +90,19 @@ class ClinicalExtractorLLM:
             # Move model to CPU manually
             self.model = self.model.to("cpu")
             
-            # Create pipeline with explicit device
+            # Create pipeline with explicit device and better generation settings
             self.generator = pipeline(
                 "text-generation",
                 model=self.model,
                 tokenizer=self.tokenizer,
                 device="cpu",
                 return_full_text=False,
-                do_sample=True,
+                do_sample=False,  # Use greedy decoding for more consistent results
                 temperature=0.1,
-                max_new_tokens=1000,
-                pad_token_id=self.tokenizer.eos_token_id
+                max_new_tokens=500,  # Reduce max tokens for faster generation
+                min_new_tokens=10,   # Ensure minimum output
+                pad_token_id=self.tokenizer.eos_token_id,
+                eos_token_id=self.tokenizer.eos_token_id
             )
             
             if self.is_local:
@@ -280,24 +282,69 @@ JSON:"""
         
         # Use LLM if available
         if self.generator:
+            print("🧠 Using LLM for extraction...")
+            
+            # Create prompt
+            prompt = self.create_extraction_prompt(transcript_text)
+            print(f"📝 Generated prompt:\n{prompt}")
+            
             try:
-                print("🧠 Using LLM for extraction...")
-                prompt = self.create_extraction_prompt(transcript_text)
-                
-                # Generate response
                 print("⏳ Generating response...")
-                response = self.generator(
-                    prompt,
-                    max_new_tokens=800,
-                    temperature=0.1,
-                    do_sample=True,
-                    pad_token_id=self.tokenizer.eos_token_id
-                )
+                
+                # Use a timeout to prevent hanging
+                import signal
+                
+                def timeout_handler(signum, frame):
+                    raise TimeoutError("LLM generation timeout")
+                
+                signal.signal(signal.SIGALRM, timeout_handler)
+                signal.alarm(45)  # Increased to 45 second timeout
+                
+                try:
+                    # Try multiple generation approaches for better reliability
+                    response = None
+                    
+                    # First attempt: Conservative parameters
+                    try:
+                        response = self.generator(
+                            prompt,
+                            max_new_tokens=800,  # Increased tokens for complete JSON
+                            do_sample=False,  # Greedy decoding
+                            temperature=0.0,  # Completely deterministic
+                            pad_token_id=self.tokenizer.eos_token_id,
+                            eos_token_id=self.tokenizer.eos_token_id,
+                            return_full_text=False,
+                            clean_up_tokenization_spaces=True
+                        )
+                    except Exception as e:
+                        print(f"⚠️  First generation attempt failed: {e}")
+                        
+                        # Second attempt: Slightly different parameters
+                        response = self.generator(
+                            prompt,
+                            max_new_tokens=600,
+                            do_sample=True,
+                            temperature=0.1,
+                            top_p=0.9,
+                            pad_token_id=self.tokenizer.eos_token_id,
+                            return_full_text=False
+                        )
+                        
+                finally:
+                    signal.alarm(0)  # Cancel timeout
                 
                 if response and len(response) > 0:
-                    generated_text = response[0]['generated_text']
+                    generated_text = response[0]['generated_text'].strip()
                     print(f"✅ LLM generated response (length: {len(generated_text)})")
-                    return self.parse_llm_response(generated_text)
+                    
+                    # Debug: Show first 200 chars of response
+                    preview = generated_text[:200] + "..." if len(generated_text) > 200 else generated_text
+                    print(f"🔍 Response preview: {preview}")
+                    
+                    if generated_text:  # Check if not empty
+                        return self.parse_llm_response(generated_text)
+                    else:
+                        print("❌ Generated text is empty")
                 else:
                     print("❌ LLM returned empty response")
                     
@@ -305,12 +352,10 @@ JSON:"""
                 print(f"⚠️  LLM extraction failed: {e}")
                 import traceback
                 traceback.print_exc()
-        else:
-            print("❌ No LLM generator available")
         
-        # Fallback: basic template-based extraction
-        print("🔄 Using fallback extraction")
-        return self._fallback_extraction(transcript_text)
+        # Fallback: Rule-based extraction for basic cases
+        print("🔄 Using rule-based fallback extraction...")
+        return self._rule_based_extraction(transcript_text)
     
     def _fallback_extraction(self, text: str) -> Dict[str, Any]:
         """
