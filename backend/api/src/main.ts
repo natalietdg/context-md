@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import * as dotenv from 'dotenv';
 import { json as bodyJson, urlencoded } from 'express';
 import { Logger } from '@nestjs/common';
+import { Server as IOServer } from 'socket.io';
 
 dotenv.config();
 
@@ -49,8 +50,41 @@ async function bootstrap() {
 
   const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 8080;
   await app.listen(port);
+
+  // Attach Socket.IO to the same HTTP server
+  const httpServer = app.getHttpServer();
+  const io = new IOServer(httpServer, {
+    cors: {
+      origin: (origin, callback) => {
+        if (!origin || allowedOrigins.has(origin)) return callback(null, true);
+        return callback(new Error('Not allowed by CORS'));
+      },
+      methods: ['GET', 'POST'],
+      credentials: true,
+    },
+    transports: ['websocket', 'polling'],
+  });
+
+  // Socket.IO connection handling
+  io.on('connection', (socket) => {
+    console.log(`Socket.IO client connected: ${socket.id}`);
+    
+    socket.on('disconnect', () => {
+      console.log(`Socket.IO client disconnected: ${socket.id}`);
+    });
+
+    // Join room for audio processing updates
+    socket.on('join-processing', (jobId: string) => {
+      socket.join(`processing-${jobId}`);
+      console.log(`Client ${socket.id} joined processing room for job ${jobId}`);
+    });
+  });
+
+  // Make io available globally for other services
+  (global as any).io = io;
+
   // eslint-disable-next-line no-console
-  console.log(`Nest API listening on http://localhost:${port}`);
+  console.log(`Nest API with Socket.IO listening on http://localhost:${port}`);
 }
 
 bootstrap().catch((err) => {

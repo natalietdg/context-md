@@ -10,48 +10,91 @@ phases:
       - curl -o backend/api/rds-ca-2019-root.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
       - npm --prefix backend/api ci
 
+      - echo "Prepare vendor directory and download static ffmpeg"
+      - mkdir -p vendor
+
+      - |
+        # detect arch and pick appropriate static ffmpeg build
+        set -euo pipefail
+        ARCH=$(uname -m || echo "x86_64")
+        echo "Detected architecture: $ARCH"
+        if [ "$ARCH" = "x86_64" ]; then
+          FF_URL="https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz"
+        elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+          FF_URL="https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-arm64-static.tar.xz"
+        else
+          FF_URL="https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz"
+        fi
+        echo "Downloading ffmpeg from: $FF_URL"
+        # download but don't fail the build if unavailable
+        if curl -sSL --fail -o vendor/ffmpeg.tar.xz "$FF_URL"; then
+          tar -xJf vendor/ffmpeg.tar.xz -C vendor --strip-components=1 || true
+          if [ -f vendor/ffmpeg ]; then
+            chmod +x vendor/ffmpeg vendor/ffprobe || true
+          else
+            # some releases include bin/ffmpeg
+            if [ -f vendor/ffmpeg-*-static/ffmpeg ]; then
+              find vendor -type f -name ffmpeg -exec chmod +x {} \; || true
+            fi
+          fi
+        else
+          echo "FFmpeg download failed; continuing without vendor/ffmpeg"
+        fi
+        ls -la vendor || true
+
       - echo "Create repo-root Python venv and install requirements"
       - python3 -m venv venv
       - source venv/bin/activate
       - export VENV_PATH="$(pwd)/venv"
       - export PATH="$VENV_PATH/bin:$PATH"
       - pip install --upgrade pip setuptools wheel
-      - pip install -r requirements.txt
+      - pip install --no-cache-dir git+https://github.com/m-bain/whisperx.git
+      - pip install --no-cache-dir -r requirements.txt
 
   build:
     commands:
       - echo "Build Node backend"
       - npm --prefix backend/api run build
-      - echo "Copy RDS CA cert into dist/"
+      - echo "Copy RDS CA cert into dist AND repo root for EB runtime"
       - mkdir -p backend/api/dist
       - cp backend/api/rds-ca-2019-root.pem backend/api/dist/
-      - ls -la backend/api/dist/
+      - cp backend/api/rds-ca-2019-root.pem .
+      - ls -la backend/api/dist/ || true
+      - ls -la backend/api/rds-ca-2019-root.pem || true
+      - ls -la backend/api/
+      - chmod +x scripts/start.sh
+      
+cache:
+  paths:
+    - '/root/.cache/pip/**/*'
+    - '$HOME/.cache/pip/**/*'
+    - 'venv/**'
+    - 'wheelhouse/**/*'
+    - 'backend/api/node_modules/**/*'
+    - '$HOME/.npm/**/*'
+    - '$HOME/.cache/yarn/**/*'
+    - 'backend/api/dist/**/*'
+    - 'vendor/**/*'
 
 artifacts:
-  # IMPORTANT: artifact root is repo root so EB will see repo-root Procfile & scripts/start.sh
   base-directory: .
+  discard-paths: no
   files:
+    - backend/api/node_modules/**/*
     - backend/api/dist/**/*
     - backend/api/package.json
+    - backend/api/rds-ca-2019-root.pem
     - backend/api/package-lock.json
-    - Procfile                # repo-root Procfile (web: ./scripts/start.sh)
+    - Procfile
     - scripts/**/*
     - rds-ca-2019-root.pem
     - pipeline.py
+    - pipeline_server.py
     - whisperX/**/*
     - sealion/**/*
     - clinical_extractor_llm/**/*
     - aws/**/*
     - requirements.txt
-
-# keep secondary artifact only if you need a separate pipeline artifact; optional
-secondary-artifacts:
-  pipeline:
-    base-directory: .
-    files:
-      - pipeline.py
-      - whisperX/**/*
-      - sealion/**/*
-      - clinical_extractor_llm/**/*
-      - aws/**/*
-      - requirements.txt
+    - vendor/**/*
+    - .ebextensions/**/*
+    - .platform/**/*

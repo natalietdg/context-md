@@ -6,6 +6,7 @@ import { AuditService } from './audit.service';
 import { SpeechProcessingService } from './speech-processing.service';
 import { SeaLionService } from './sea-lion.service';
 import { PythonWorkerService } from './python-worker.service';
+import { SocketService } from './socket.service';
 import { AuditLog } from '../entities/audit-log.entity';
 
 @Module({
@@ -19,6 +20,7 @@ import { AuditLog } from '../entities/audit-log.entity';
     SpeechProcessingService,
     SeaLionService,
     PythonWorkerService,
+    SocketService,
   ],
   exports: [
     S3Service,
@@ -26,6 +28,7 @@ import { AuditLog } from '../entities/audit-log.entity';
     SpeechProcessingService,
     SeaLionService,
     PythonWorkerService,
+    SocketService,
   ],
 })
 export class SharedModule {}

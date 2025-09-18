@@ -7,6 +7,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { execFile } from 'child_process';
 import { PythonWorkerService } from './python-worker.service';
+import { SocketService } from './socket.service';
 
 export interface TranscriptionResult {
   raw_transcript: string;
@@ -14,6 +15,7 @@ export interface TranscriptionResult {
   confidence_score: number;
   processing_time_ms: number;
   language_detected?: string;
+  job_id?: string;
 }
 
 @Injectable()
@@ -22,7 +24,8 @@ export class SpeechProcessingService {
 
   constructor(
     private httpService: HttpService,
-    private pythonWorker: PythonWorkerService
+    private pythonWorker: PythonWorkerService,
+    private socketService: SocketService
   ) {}
 
   async processAudio(audioBuffer: Buffer, language: string = 'auto'): Promise<TranscriptionResult> {
@@ -39,6 +42,80 @@ export class SpeechProcessingService {
       }
     } catch (error) {
       this.logger.error('Audio processing failed:', error);
+      throw new Error(`Audio processing failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Process audio with real-time Socket.IO updates
+   */
+  async processAudioWithUpdates(audioBuffer: Buffer, jobId: string, language: string = 'auto'): Promise<TranscriptionResult> {
+    const startTime = Date.now();
+
+    try {
+      // Send initial update
+      this.socketService.sendProcessingUpdate({
+        jobId,
+        stage: 'transcription',
+        progress: 0,
+        message: 'Starting audio processing...'
+      });
+
+      // Use persistent Python worker for fast processing
+      if (this.pythonWorker.isReady()) {
+        this.logger.log('Using persistent Python worker for transcription');
+        
+        this.socketService.sendProcessingUpdate({
+          jobId,
+          stage: 'transcription',
+          progress: 10,
+          message: 'Using optimized Python worker for processing'
+        });
+
+        const result = await this.processWithWorkerUpdates(audioBuffer, language, startTime, jobId);
+        
+        this.socketService.sendProcessingUpdate({
+          jobId,
+          stage: 'completed',
+          progress: 100,
+          message: 'Audio processing completed successfully',
+          data: result
+        });
+
+        return result;
+      } else {
+        this.logger.warn('Python worker not ready, falling back to CLI pipeline');
+        
+        this.socketService.sendProcessingUpdate({
+          jobId,
+          stage: 'transcription',
+          progress: 10,
+          message: 'Python worker not ready, using fallback CLI processing'
+        });
+
+        const result = await this.processWithCliUpdates(audioBuffer, language, startTime, jobId);
+        
+        this.socketService.sendProcessingUpdate({
+          jobId,
+          stage: 'completed',
+          progress: 100,
+          message: 'Audio processing completed successfully',
+          data: result
+        });
+
+        return result;
+      }
+    } catch (error) {
+      this.logger.error('Audio processing failed:', error);
+      
+      this.socketService.sendProcessingUpdate({
+        jobId,
+        stage: 'error',
+        progress: 0,
+        message: 'Audio processing failed',
+        error: error.message
+      });
+
       throw new Error(`Audio processing failed: ${error.message}`);
     }
   }
