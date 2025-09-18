@@ -24,7 +24,7 @@ except ImportError:
 
 class ClinicalExtractorLLM:
     # def __init__(self, model_name: str = "/Users/estherlow/models/Qwen2.5-3B-Instruct"):
-    def __init__(self, model_name: str = "Qwen/Qwen2.5-3B-Instruct"):
+    def __init__(self, model_name: str = "Qwen/Qwen2.5-1.5B-Instruct"):
         """
         Initialize the LLM-based clinical extractor.
         
