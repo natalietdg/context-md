@@ -26,6 +26,7 @@ import {
 import { format } from 'date-fns';
 import { LiveConsentKaraoke } from '../components/LiveConsentKaraoke';
 import { ReviewVerification } from '../components/ReviewVerification';
+import { ProcessingStatus } from '../components/ProcessingStatus';
 
 interface Consultation {
   id: string;
@@ -747,49 +748,8 @@ const Consultation: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* Processing Status */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Clock className="h-5 w-5" />
-                  <span>Processing Status</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Audio Upload</span>
-                    {consultation?.aws_audio_link ? (
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <div className="h-5 w-5 rounded-full border-2 border-gray-300" />
-                    )}
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Transcription</span>
-                    {consultation?.transcript_raw ? (
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    ) : consultation?.processing_status === 'processing' ? (
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
-                    ) : (
-                      <div className="h-5 w-5 rounded-full border-2 border-gray-300" />
-                    )}
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Translation</span>
-                    {consultation?.transcript_eng ? (
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    ) : consultation?.processing_status === 'processing' ? (
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
-                    ) : (
-                      <div className="h-5 w-5 rounded-full border-2 border-gray-300" />
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Real-time Processing Status */}
+            <ProcessingStatus consultationId={consultation?.id || ''} />
 
             {/* Consent Information */}
             <Card>

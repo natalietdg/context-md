@@ -1,14 +1,16 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Consultation, Doctor, Patient, Consent, ProcessingStatus, UserType, AppointmentStatus } from '../entities';
 import { S3Service } from '../shared/s3.service';
 import { AuditService } from '../shared/audit.service';
 import { SpeechProcessingService } from '../shared/speech-processing.service';
+import { PythonWorkerService } from '../shared/python-worker.service';
+import { ConsultationGateway } from './consultation.gateway';
 import { CreateConsultationDto, UpdateConsultationDto, LockConsultationDto } from './dto';
 
 @Injectable()
-export class ConsultationService {
+export class ConsultationService implements OnModuleInit {
   private readonly logger = new Logger(ConsultationService.name);
 
   constructor(
@@ -23,7 +25,16 @@ export class ConsultationService {
     private s3Service: S3Service,
     private auditService: AuditService,
     private speechProcessingService: SpeechProcessingService,
+    private pythonWorkerService: PythonWorkerService,
+    private consultationGateway: ConsultationGateway,
   ) {}
+
+  onModuleInit() {
+    // Listen to Python worker model status updates
+    this.pythonWorkerService.on('modelStatus', (data) => {
+      this.consultationGateway.emitModelStatus(data.status, data.details);
+    });
+  }
 
   async createConsultationWithAudio(
     createConsultationDto: CreateConsultationDto,
@@ -371,34 +382,42 @@ export class ConsultationService {
 
   private async processConsultationAudioFromS3(consultationId: string): Promise<void> {
     try {
-      // Update status to processing
+      // Update status to processing and emit update
       await this.consultationRepository.update(consultationId, {
         processing_status: ProcessingStatus.PROCESSING,
       });
+      this.consultationGateway.emitProcessingUpdate(consultationId, 'processing', 10, 'Starting audio processing...');
 
       const consultation = await this.getConsultation(consultationId);
       
       // Download audio from S3
+      this.consultationGateway.emitProcessingUpdate(consultationId, 'processing', 30, 'Downloading audio from S3...');
       const audioBuffer = await this.s3Service.downloadFile(consultation.aws_audio_link);
       
       // Process audio through speech pipeline
+      this.consultationGateway.emitProcessingUpdate(consultationId, 'processing', 50, 'Processing audio with AI models...');
       const transcriptionResult = await this.speechProcessingService.processAudio(audioBuffer);
 
       // Update consultation with transcripts
+      this.consultationGateway.emitProcessingUpdate(consultationId, 'processing', 90, 'Saving transcription results...');
       await this.consultationRepository.update(consultationId, {
         transcript_raw: transcriptionResult.raw_transcript,
         transcript_eng: transcriptionResult.english_transcript,
         processing_status: ProcessingStatus.COMPLETED,
       });
 
+      // Emit completion
+      const updatedConsultation = await this.getConsultation(consultationId);
+      this.consultationGateway.emitProcessingComplete(consultationId, updatedConsultation);
       this.logger.log(`Audio processing completed for consultation ${consultationId}`);
     } catch (error) {
       this.logger.error(`Audio processing failed for consultation ${consultationId}:`, error);
       
-      // Update status to failed
+      // Update status to failed and emit error
       await this.consultationRepository.update(consultationId, {
         processing_status: ProcessingStatus.FAILED,
       });
+      this.consultationGateway.emitProcessingError(consultationId, error.message);
     }
   }
 }

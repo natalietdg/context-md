@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Inject, Optional } from '@nestjs/common';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import { EventEmitter } from 'events';
@@ -195,6 +195,10 @@ export class PythonWorkerService extends EventEmitter implements OnModuleInit, O
             if (!wasReady && this.ready) {
               this.emit('ready');
               this.logger.log('Python worker models fully initialized and ready');
+              // Emit model status via EventEmitter for other services to listen
+              this.emit('modelStatus', { status: 'ready', details: message.models_loaded });
+            } else if (!this.ready) {
+              this.emit('modelStatus', { status: 'loading', details: message.models_loaded });
             }
           }
         }

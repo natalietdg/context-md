@@ -1,17 +1,18 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConsultationService } from './consultation.service';
 import { ConsultationController } from './consultation.controller';
-import { Consultation, Doctor, Patient, Consent, Report, Appointment, AuditLog } from '../entities';
+import { ConsultationService } from './consultation.service';
+import { ConsultationGateway } from './consultation.gateway';
+import { Consultation, Doctor, Patient, Consent } from '../entities';
 import { SharedModule } from '../shared/shared.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Consultation, Doctor, Patient, Consent, Report, Appointment, AuditLog]),
+    TypeOrmModule.forFeature([Consultation, Doctor, Patient, Consent]),
     SharedModule,
   ],
-  providers: [ConsultationService],
   controllers: [ConsultationController],
-  exports: [ConsultationService],
+  providers: [ConsultationService, ConsultationGateway],
+  exports: [ConsultationService, ConsultationGateway],
 })
 export class ConsultationModule {}

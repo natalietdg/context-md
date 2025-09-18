@@ -25,6 +25,7 @@ import {
   Play
 } from 'lucide-react';
 import { LiveConsentKaraoke } from '../components/LiveConsentKaraoke';
+import { ProcessingStatus } from '../components/ProcessingStatus';
 
 interface Patient {
   id: string;
