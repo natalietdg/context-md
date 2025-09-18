@@ -48,13 +48,19 @@ export class User {
   // Encryption key - CRITICAL: Must be set in production environment
   private static readonly ENCRYPTION_KEY = (() => {
     const key = process.env.DB_ENCRYPTION_KEY || 'dev-key-32-chars-long-change-me!!';
+    
+    // Handle hex keys (64 chars = 32 bytes)
+    if (key.length === 64 && /^[0-9a-fA-F]+$/.test(key)) {
+      return Buffer.from(key, 'hex').toString('binary');
+    }
+    
     // Ensure key is exactly 32 bytes for AES-256
-    if (Buffer.from(key).length !== 32) {
+    if (Buffer.from(key).length !== 64) {
       if (process.env.NODE_ENV === 'production') {
-        throw new Error('DB_ENCRYPTION_KEY must be exactly 32 characters/bytes for AES-256');
+        throw new Error('DB_ENCRYPTION_KEY must be exactly 32 characters/bytes or 64 hex characters for AES-256');
       }
       // Pad or truncate dev key to 32 bytes
-      return key.padEnd(32, '0').substring(0, 32);
+      return key.padEnd(64, '0').substring(0, 64);
     }
     return key;
   })();

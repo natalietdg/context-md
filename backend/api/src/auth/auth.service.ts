@@ -9,15 +9,28 @@ import * as crypto from 'crypto';
 
 const ENCRYPTION_KEY = (() => {
   const key = process.env.DB_ENCRYPTION_KEY || 'dev-key-32-chars-long-change-me!!';
-  // Ensure key is exactly 32 bytes for AES-256
-  if (Buffer.from(key).length !== 32) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('DB_ENCRYPTION_KEY must be exactly 32 characters/bytes for AES-256');
+  
+  // Handle hex-encoded keys (64 characters = 32 bytes when decoded)
+  if (key.length === 64 && /^[0-9a-fA-F]+$/.test(key)) {
+    const binaryKey = Buffer.from(key, 'hex');
+    if (binaryKey.length === 32) {
+      return binaryKey;
     }
-    // Pad or truncate dev key to 32 bytes
-    return key.padEnd(32, '0').substring(0, 32);
   }
-  return key;
+  
+  // Handle raw string keys (must be exactly 32 bytes)
+  const keyBuffer = Buffer.from(key, 'utf8');
+  if (keyBuffer.length === 32) {
+    return keyBuffer;
+  }
+  
+  // Key validation failed
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('DB_ENCRYPTION_KEY must be exactly 32 bytes (as string) or 64 hex characters');
+  }
+  
+  // Pad or truncate dev key to 32 bytes
+  return Buffer.from(key.padEnd(32, '0').substring(0, 32), 'utf8');
 })();
 
 const ALGORITHM = 'aes-256-cbc'
