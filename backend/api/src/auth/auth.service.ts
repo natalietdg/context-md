@@ -42,8 +42,13 @@ export interface JwtPayload {
 }
 
 function encryptDeterministic(text) {
-  const hash = crypto.createHash('sha256').update(text + ENCRYPTION_KEY).digest();
-  const iv = hash.slice(0, 16);
+  // Create deterministic IV from text + key using proper buffer concatenation
+  const hash = crypto.createHash('sha256');
+  hash.update(text, 'utf8');
+  hash.update(ENCRYPTION_KEY);
+  const hashDigest = hash.digest();
+  const iv = hashDigest.slice(0, 16);
+  
   const cipher = crypto.createCipheriv(ALGORITHM, ENCRYPTION_KEY, iv);
   let encrypted = cipher.update(text, 'utf8', 'hex');
   encrypted += cipher.final('hex');
@@ -99,15 +104,21 @@ export class AuthService {
     
     // Find user with matching email (encrypt input email for comparison)
     let matchingUser: any = null;
-    // const encryptedInputEmail = encryptDeterministic(email);
+    this.logger.log('ENCRYPTION_KEY type:', typeof ENCRYPTION_KEY);
+    this.logger.log('ENCRYPTION_KEY:', ENCRYPTION_KEY.toString('hex'));
+    
+    // Test encryption consistency
+    const testEmail = encryptDeterministic(email);
+    const testEmail2 = encryptDeterministic(email);
+    this.logger.log('Email encryption test 1:', testEmail);
+    this.logger.log('Email encryption test 2:', testEmail2);
+    this.logger.log('Are they equal?', testEmail === testEmail2);
+    
     for (const user of users) {
       // Compare against encrypted email stored in _email field
-      this.logger.log('user.email', user.email);
-
-      this.logger.log('email', encryptDeterministic(email));
-
-      this.logger.log('user.password_hash', user.password_hash);
-      this.logger.log('password', encryptDeterministic(password));
+      this.logger.log('user.email:', user.email);
+      this.logger.log('encrypted input email:', encryptDeterministic(email));
+      
       if (user.email === encryptDeterministic(email)) {
         matchingUser = user;
         break;

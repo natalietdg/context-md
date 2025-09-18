@@ -82,10 +82,14 @@ export class Patient {
   }
 
   // Deterministic encryption for emails (same input = same output)
-  private encryptDeterministic(text: string): string {
-    // Use a fixed IV derived from the text itself for deterministic encryption
-    const hash = crypto.createHash('sha256').update(text + Patient.ENCRYPTION_KEY).digest();
-    const iv = hash.slice(0, 16); // Use first 16 bytes as IV
+  private encryptDeterministic(text) {
+    // Create deterministic IV from text + key using proper buffer concatenation
+    const hash = crypto.createHash('sha256');
+    hash.update(text, 'utf8');
+    hash.update(process.env.DB_ENCRYPTION_KEY);
+    const hashDigest = hash.digest();
+    const iv = hashDigest.slice(0, 16);
+    
     const cipher = crypto.createCipheriv(Patient.ALGORITHM, Patient.ENCRYPTION_KEY, iv);
     let encrypted = cipher.update(text, 'utf8', 'hex');
     encrypted += cipher.final('hex');
